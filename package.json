@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@tanstack/react-query": "^5.94.5",
+    "antd": "^6.3.3",
+    "axios": "^1.13.6",
+    "dayjs": "^1.11.20",
+    "i18next": "^25.10.3",
+    "react-i18next": "^16.6.0",
+    "react-router-dom": "^7.13.1"
+  }
+}
