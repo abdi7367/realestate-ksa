@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.db import transaction
+from django.db.models import Sum, Count
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Contract, Payment
@@ -25,17 +26,6 @@ class ContractService:
         return (amount * VAT_RATE).quantize(Decimal('0.01'))
 
     @staticmethod
-    def calculate_remaining_balance(contract) -> Decimal:
-        """
-        Remaining = total_value - SUM(payments)
-        Never store this — always calculate on the fly.
-        """
-        total_paid = contract.payments.filter(
-            status='confirmed'
-        ).aggregate_sum()
-        return contract.total_value - (total_paid or Decimal('0'))
-
-    @staticmethod
     @transaction.atomic
     def create_contract(
         property_unit,
@@ -48,6 +38,10 @@ class ContractService:
         """
         Create a contract with full validation.
         Wrapped in atomic() — if anything fails, nothing is saved.
+
+        FIX: Removed the erroneous `property=property_unit.property` kwarg that
+        was in the original. Contract has no direct 'property' field on the model.
+        Access the property via contract.unit.property instead.
         """
         # Validate unit is available
         if property_unit.rental_status != 'vacant':
@@ -74,7 +68,6 @@ class ContractService:
         # Create the contract
         contract = Contract.objects.create(
             unit=property_unit,
-            property=property_unit.property,
             tenant=tenant,
             monthly_rent=monthly_rent,
             duration_months=duration_months,
@@ -146,14 +139,17 @@ class PaymentService:
         """
         Record a payment with full validation.
         atomic() ensures contract and payment are always in sync.
+
+        FIX: Moved the zero-amount check BEFORE the remaining-balance check so
+        validation errors are returned in the correct logical order.
         """
         if contract.status != 'active':
             raise ValidationError("Cannot add payment to a non-active contract.")
 
-        remaining = PaymentService.get_remaining_balance(contract)
-
         if amount <= Decimal('0'):
             raise ValidationError("Payment amount must be greater than zero.")
+
+        remaining = PaymentService.get_remaining_balance(contract)
 
         if amount > remaining:
             raise ValidationError(
@@ -175,8 +171,13 @@ class PaymentService:
 
     @staticmethod
     def get_remaining_balance(contract) -> Decimal:
-        """Calculate remaining balance dynamically — never stored."""
-        from django.db.models import Sum
+        """
+        Calculate remaining balance dynamically — never stored in DB.
+
+        FIX: Original code had .aggregate_sum() which does not exist on QuerySets
+        and would crash at runtime. Replaced with the correct Django ORM pattern:
+        .aggregate(total=Sum('amount')).
+        """
         total_paid = contract.payments.filter(
             status='confirmed'
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
@@ -186,7 +187,6 @@ class PaymentService:
     @staticmethod
     def get_payment_summary(contract) -> dict:
         """Full payment summary for a contract."""
-        from django.db.models import Sum, Count
         stats = contract.payments.filter(status='confirmed').aggregate(
             total_paid=Sum('amount'),
             payment_count=Count('id'),

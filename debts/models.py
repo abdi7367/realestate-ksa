@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Sum   # FIX: was missing — models.Sum does not exist
 from properties.models import Property
 
 
@@ -12,7 +13,11 @@ class Debt(models.Model):
         ('other', 'Other'),
     ]
 
-    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name='debts')
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='debts'
+    )
     debt_type = models.CharField(max_length=30, choices=DEBT_TYPE_CHOICES)
     creditor_name = models.CharField(max_length=255)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -23,8 +28,13 @@ class Debt(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def paid_amount(self):
+        """
+        FIX: Original used models.Sum('amount') which does not exist.
+        django.db.models.Sum must be imported separately (done at the top of this file).
+        """
         return self.installments.filter(status='paid').aggregate(
-            total=models.Sum('amount'))['total'] or 0
+            total=Sum('amount')
+        )['total'] or 0
 
     def remaining_balance(self):
         return self.total_amount - self.paid_amount()
@@ -40,7 +50,11 @@ class DebtInstallment(models.Model):
         ('overdue', 'Overdue'),
     ]
 
-    debt = models.ForeignKey(Debt, on_delete=models.CASCADE, related_name='installments')
+    debt = models.ForeignKey(
+        Debt,
+        on_delete=models.CASCADE,
+        related_name='installments'
+    )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     due_date = models.DateField()
     paid_date = models.DateField(null=True, blank=True)

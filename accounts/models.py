@@ -7,6 +7,10 @@ class User(AbstractUser):
         ('admin', 'Admin'),
         ('property_manager', 'Property Manager'),
         ('accountant', 'Accountant'),
+        # FIX: Added finance_manager role to match the requirements document.
+        # The approval workflow in vouchers requires: Accountant → Finance Manager → Admin.
+        # The original code mapped this step to 'property_manager' which was wrong.
+        ('finance_manager', 'Finance Manager'),
         ('owner', 'Owner'),
     ]
 
@@ -31,6 +35,10 @@ class User(AbstractUser):
     @property
     def is_accountant(self):
         return self.role == 'accountant'
+
+    @property
+    def is_finance_manager(self):
+        return self.role == 'finance_manager'
 
     @property
     def is_owner(self):

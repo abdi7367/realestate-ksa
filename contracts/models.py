@@ -54,7 +54,7 @@ class Contract(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Audit log — tracks who changed what and when (Step 4)
+    # Audit log
     history = HistoricalRecords()
 
     class Meta:
@@ -66,6 +66,13 @@ class Contract(models.Model):
 
     def __str__(self):
         return f"Contract #{self.pk} — {self.unit} ({self.status})"
+
+    @property
+    def property(self):
+        """Convenience accessor — navigate to property via the unit FK."""
+        if self.unit:
+            return self.unit.property
+        return None
 
 
 class Payment(models.Model):
