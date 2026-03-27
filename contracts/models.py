@@ -1,6 +1,7 @@
+from decimal import Decimal
 from django.db import models
-from accounts.models import User
-from properties.models import PropertyUnit
+from django.conf import settings
+from simple_history.models import HistoricalRecords
 
 
 class Contract(models.Model):
@@ -8,64 +9,107 @@ class Contract(models.Model):
         ('active', 'Active'),
         ('expired', 'Expired'),
         ('terminated', 'Terminated'),
-        ('pending', 'Pending'),
-    ]
-    PAYMENT_SCHEDULE_CHOICES = [
-        ('monthly', 'Monthly'),
-        ('quarterly', 'Quarterly'),
-        ('semi_annual', 'Semi-Annual'),
-        ('annual', 'Annual'),
     ]
 
-    contract_number = models.CharField(max_length=50, unique=True)
-    unit = models.ForeignKey(PropertyUnit, on_delete=models.CASCADE, related_name='contracts')
-    tenant_name = models.CharField(max_length=255)
-    tenant_id = models.CharField(max_length=50)
-    tenant_phone = models.CharField(max_length=20, blank=True)
-    tenant_email = models.EmailField(blank=True)
+    # Relations
+    unit = models.ForeignKey(
+        'properties.PropertyUnit',
+        on_delete=models.PROTECT,
+        related_name='contracts',
+        null=True,
+        blank=True
+    )
+    tenant = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='tenant_contracts',
+        null=True,
+        blank=True
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_contracts'
+    )
+
+    # Financial fields — always Decimal, never Float
+    monthly_rent = models.DecimalField(max_digits=10, decimal_places=2)
+    duration_months = models.IntegerField(default=12)
+
+    total_value = models.DecimalField(max_digits=12, decimal_places=2)
+    vat_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    total_value_with_vat = models.DecimalField(max_digits=12, decimal_places=2)
+
+    # Dates
     start_date = models.DateField()
     end_date = models.DateField()
-    rent_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    payment_schedule = models.CharField(max_length=20, choices=PAYMENT_SCHEDULE_CHOICES, default='monthly')
-    security_deposit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    termination_date = models.DateField(null=True, blank=True)
+    termination_reason = models.TextField(blank=True)
+
+    # Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def total_contract_value(self):
-        from datetime import date
-        months = ((self.end_date.year - self.start_date.year) * 12 +
-                  self.end_date.month - self.start_date.month)
-        return self.rent_amount * months
+    # Audit log — tracks who changed what and when (Step 4)
+    history = HistoricalRecords()
 
-    def paid_amount(self):
-        return self.payments.filter(status='paid').aggregate(
-            total=models.Sum('amount'))['total'] or 0
-
-    def remaining_balance(self):
-        return self.total_contract_value() - self.paid_amount()
+    class Meta:
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['unit']),
+            models.Index(fields=['end_date']),
+        ]
 
     def __str__(self):
-        return f'Contract {self.contract_number} - {self.tenant_name}'
+        return f"Contract #{self.pk} — {self.unit} ({self.status})"
 
 
 class Payment(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('paid', 'Paid'),
-        ('overdue', 'Overdue'),
-        ('partial', 'Partial'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
     ]
 
-    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='payments')
+    METHOD_CHOICES = [
+        ('bank_transfer', 'Bank Transfer'),
+        ('cash', 'Cash'),
+        ('cheque', 'Cheque'),
+        ('online', 'Online'),
+    ]
+
+    contract = models.ForeignKey(
+        Contract,
+        on_delete=models.PROTECT,
+        related_name='payments'
+    )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    due_date = models.DateField()
-    paid_date = models.DateField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    payment_date = models.DateField()
+    payment_method = models.CharField(max_length=20, choices=METHOD_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='confirmed')
     notes = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='recorded_payments'
+    )
+
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Audit log
+    history = HistoricalRecords()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['contract']),
+            models.Index(fields=['payment_date']),
+            models.Index(fields=['status']),
+        ]
+
     def __str__(self):
-        return f'Payment {self.amount} for {self.contract.contract_number}'
+        return f"Payment #{self.pk} — {self.amount} SAR ({self.contract})"

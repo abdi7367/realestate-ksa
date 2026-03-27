@@ -1,5 +1,6 @@
 from django.db import models
-from accounts.models import User
+from django.conf import settings
+from simple_history.models import HistoricalRecords   # Step 4: import this
 
 
 class Property(models.Model):
@@ -18,7 +19,7 @@ class Property(models.Model):
     num_units = models.IntegerField(default=1)
     ownership_status = models.CharField(max_length=100, blank=True)
     property_manager = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -27,11 +28,20 @@ class Property(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Step 4: This one line activates full audit logging for this model.
+    # It tracks: who changed it, when, what the before/after values were.
+    # You can view history in Django admin automatically.
+    history = HistoricalRecords()
+
     def __str__(self):
         return f"{self.name} - {self.city}"
 
     class Meta:
         verbose_name_plural = "Properties"
+        indexes = [
+            models.Index(fields=['city']),
+            models.Index(fields=['property_type']),
+        ]
 
 
 class PropertyUnit(models.Model):
@@ -65,6 +75,15 @@ class PropertyUnit(models.Model):
     )
     monthly_rent = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     notes = models.TextField(blank=True)
+
+    # Step 4: audit log on units too
+    history = HistoricalRecords()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['rental_status']),
+            models.Index(fields=['property']),
+        ]
 
     def __str__(self):
         return f"Unit {self.unit_number} - {self.property.name}"
