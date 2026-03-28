@@ -11,7 +11,6 @@ class User(AbstractUser):
         # The approval workflow in vouchers requires: Accountant → Finance Manager → Admin.
         # The original code mapped this step to 'property_manager' which was wrong.
         ('finance_manager', 'Finance Manager'),
-        ('owner', 'Owner'),
     ]
 
     role = models.CharField(
@@ -20,6 +19,12 @@ class User(AbstractUser):
         default='accountant'
     )
     phone = models.CharField(max_length=20, blank=True)
+    national_id = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        help_text='Tenant / user national ID or Iqama (§3.2 Tenant ID).',
+    )
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
@@ -39,7 +44,3 @@ class User(AbstractUser):
     @property
     def is_finance_manager(self):
         return self.role == 'finance_manager'
-
-    @property
-    def is_owner(self):
-        return self.role == 'owner'

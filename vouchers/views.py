@@ -1,7 +1,10 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+
+from accounts.permissions import VoucherManagementPermission
 from .models import Voucher
 from .serializers import VoucherSerializer
 
@@ -14,6 +17,11 @@ class VoucherViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['property', 'approval_status', 'payment_method']
     search_fields = ['voucher_number', 'payee_name', 'description']
+
+    def get_permissions(self):
+        if self.action in ('approve', 'reject'):
+            return [IsAuthenticated()]
+        return [VoucherManagementPermission()]
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):

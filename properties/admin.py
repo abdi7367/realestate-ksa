@@ -9,9 +9,26 @@ class PropertyUnitInline(admin.TabularInline):
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
-    list_display = ('name', 'property_type', 'city', 'num_units', 'property_manager')
+    list_display = (
+        'owner_reference',
+        'property_code',
+        'name',
+        'owner_full_name',
+        'property_type',
+        'city',
+        'location',
+        'num_units',
+        'property_manager',
+    )
     list_filter = ('property_type', 'city')
-    search_fields = ('name', 'city', 'district')
+    search_fields = (
+        'name',
+        'city',
+        'district',
+        'owner_reference',
+        'owner_full_name',
+        'owner_national_id',
+    )
     inlines = [PropertyUnitInline]
 
 

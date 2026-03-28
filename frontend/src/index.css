@@ -54,12 +54,13 @@ body {
   margin: 0;
 }
 
+/* Full-viewport app shell — avoid narrow centered column so tables can use full width */
 #root {
-  width: 1126px;
+  width: 100%;
   max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  margin: 0;
+  text-align: left;
+  border: none;
   min-height: 100svh;
   display: flex;
   flex-direction: column;

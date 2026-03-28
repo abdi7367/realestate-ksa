@@ -1,17 +1,29 @@
+from django.db.models import Prefetch
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
+
+from accounts.permissions import PropertyManagementPermission
+from contracts.models import Contract
 from .models import Property, PropertyUnit
 from .serializers import PropertySerializer, PropertyUnitSerializer
+
+
+class UnitPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()  # needed by DRF router for basename
     serializer_class = PropertySerializer
+    permission_classes = [PropertyManagementPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['property_type', 'city']
-    search_fields = ['name', 'city', 'district']
+    search_fields = ['name', 'city', 'district', 'property_code', 'location']
 
     def get_queryset(self):
         """
@@ -38,8 +50,19 @@ class PropertyViewSet(viewsets.ModelViewSet):
 class PropertyUnitViewSet(viewsets.ModelViewSet):
     queryset = PropertyUnit.objects.all()  # needed by DRF router for basename
     serializer_class = PropertyUnitSerializer
+    permission_classes = [PropertyManagementPermission]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['rental_status', 'unit_type', 'property']
+    pagination_class = UnitPagination
 
     def get_queryset(self):
-        return PropertyUnit.objects.select_related('property')
+        active_contracts = Prefetch(
+            'contracts',
+            queryset=Contract.objects.filter(
+                status='active',
+            ).select_related('tenant'),
+            to_attr='active_contract_list',
+        )
+        return PropertyUnit.objects.select_related('property').prefetch_related(
+            active_contracts
+        )

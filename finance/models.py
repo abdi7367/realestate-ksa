@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from properties.models import Property
 from accounts.models import User
@@ -34,6 +35,17 @@ class Transaction(models.Model):
     reference = models.CharField(max_length=100, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        super().clean()
+        if self.transaction_type == 'income':
+            valid = {c[0] for c in self.INCOME_CATEGORY_CHOICES}
+        else:
+            valid = {c[0] for c in self.EXPENSE_CATEGORY_CHOICES}
+        if self.category not in valid:
+            raise ValidationError(
+                {'category': f'Must match transaction type "{self.transaction_type}".'}
+            )
 
     def __str__(self):
         return f'{self.transaction_type} {self.amount} - {self.property.name}'

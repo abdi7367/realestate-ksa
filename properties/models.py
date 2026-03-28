@@ -11,13 +11,47 @@ class Property(models.Model):
         ('land', 'Land'),
     ]
 
+    property_code = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Business Property ID (requirement §3.1).',
+    )
     name = models.CharField(max_length=255)
     property_type = models.CharField(max_length=20, choices=PROPERTY_TYPE_CHOICES)
+    location = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text='Street / landmark / additional location detail (§3.1 Location).',
+    )
     city = models.CharField(max_length=100)
     district = models.CharField(max_length=100)
     size_sqm = models.DecimalField(max_digits=10, decimal_places=2)
     num_units = models.IntegerField(default=1)
     ownership_status = models.CharField(max_length=100, blank=True)
+
+    # Registered landlord / rent recipient (office record — not a system login)
+    owner_reference = models.CharField(
+        max_length=32,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text='Auto-generated id e.g. O-000042 after save.',
+    )
+    owner_full_name = models.CharField(max_length=255, blank=True)
+    owner_national_id = models.CharField(max_length=50, blank=True, db_index=True)
+    owner_phone = models.CharField(max_length=20, blank=True)
+    owner_email = models.EmailField(blank=True)
+    owner_bank_iban = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text='Bank account / IBAN for rent payouts.',
+    )
+    owner_address = models.TextField(blank=True)
+
     property_manager = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -32,6 +66,13 @@ class Property(models.Model):
     # It tracks: who changed it, when, what the before/after values were.
     # You can view history in Django admin automatically.
     history = HistoricalRecords()
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.owner_reference:
+            ref = f'O-{self.pk:06d}'
+            Property.objects.filter(pk=self.pk).update(owner_reference=ref)
+            self.owner_reference = ref
 
     def __str__(self):
         return f"{self.name} - {self.city}"

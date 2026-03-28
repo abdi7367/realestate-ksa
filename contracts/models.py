@@ -4,11 +4,58 @@ from django.conf import settings
 from simple_history.models import HistoricalRecords
 
 
+class Tenant(models.Model):
+    """
+    Office-held tenant record (not a login user). Linked from Contract via FK.
+    """
+
+    tenant_reference = models.CharField(
+        max_length=32,
+        unique=True,
+        editable=False,
+        blank=True,
+        help_text='Display ID e.g. T-000042',
+    )
+    full_name = models.CharField(max_length=255)
+    national_id = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text='National ID or Iqama number',
+    )
+    phone = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
+    nationality = models.CharField(max_length=100, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        ref = self.tenant_reference or f'#{self.pk}'
+        return f'{ref} — {self.full_name}'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.tenant_reference:
+            ref = f'T-{self.pk:06d}'
+            Tenant.objects.filter(pk=self.pk).update(tenant_reference=ref)
+            self.tenant_reference = ref
+
+
 class Contract(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('expired', 'Expired'),
         ('terminated', 'Terminated'),
+    ]
+
+    PAYMENT_SCHEDULE_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('quarterly', 'Quarterly'),
+        ('semi_annual', 'Semi-annual'),
+        ('annual', 'Annual'),
+        ('lump_sum', 'Lump sum'),
     ]
 
     # Relations
@@ -20,11 +67,11 @@ class Contract(models.Model):
         blank=True
     )
     tenant = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'Tenant',
         on_delete=models.PROTECT,
-        related_name='tenant_contracts',
+        related_name='contracts',
         null=True,
-        blank=True
+        blank=True,
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -36,6 +83,27 @@ class Contract(models.Model):
     # Financial fields — always Decimal, never Float
     monthly_rent = models.DecimalField(max_digits=10, decimal_places=2)
     duration_months = models.IntegerField(default=12)
+    security_deposit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text='§3.2 Security Deposit',
+    )
+    security_deposit_paid = models.BooleanField(
+        default=False,
+        help_text='Whether the security deposit amount has been collected.',
+    )
+    security_deposit_received_on = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Date deposit was received (optional).',
+    )
+    payment_schedule = models.CharField(
+        max_length=20,
+        choices=PAYMENT_SCHEDULE_CHOICES,
+        default='monthly',
+        help_text='§3.2 Payment Schedule',
+    )
 
     total_value = models.DecimalField(max_digits=12, decimal_places=2)
     vat_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -95,6 +163,11 @@ class Payment(models.Model):
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateField()
+    due_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Expected due date for this installment (§3.2 late payments).',
+    )
     payment_method = models.CharField(max_length=20, choices=METHOD_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='confirmed')
     notes = models.TextField(blank=True)

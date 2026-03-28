@@ -18,7 +18,10 @@ class DebtSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_paid_amount(self, obj):
-        return float(obj.paid_amount())
+        """Keep money as decimal string for JSON (§3.3 remaining balance)."""
+        val = obj.paid_amount()
+        return str(val) if val is not None else '0.00'
 
     def get_remaining_balance(self, obj):
-        return float(obj.remaining_balance())
+        val = obj.remaining_balance()
+        return str(val)

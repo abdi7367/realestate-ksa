@@ -3,6 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
+
+from accounts.permissions import FinanceTransactionPermission
 from .models import Transaction
 from .serializers import TransactionSerializer
 
@@ -10,6 +12,7 @@ from .serializers import TransactionSerializer
 class TransactionViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+    permission_classes = [FinanceTransactionPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['property', 'transaction_type', 'category']
     search_fields = ['description', 'reference']
