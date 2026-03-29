@@ -1,0 +1,62 @@
+{
+  "brand": "Real Estate KSA",
+  "layout": {
+    "tagline": "Property management",
+    "logout": "Log out",
+    "language": "Language",
+    "nav": {
+      "dashboard": "Dashboard",
+      "properties": "Properties",
+      "reports": "Reports",
+      "contracts": "Contracts",
+      "debts": "Debts",
+      "finance": "Finance",
+      "vouchers": "Vouchers"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "chooseModule": "Choose a module to get started.",
+    "heroEyebrow": "Operations hub",
+    "heroTitle": "Your portfolio, one workspace",
+    "heroDesc": "Properties, leases, rent, debts, and approvals — with access tailored to your role.",
+    "open": "Open",
+    "cards": {
+      "properties": {
+        "title": "Properties",
+        "desc": "Buildings, units, vacancies, and registered owners"
+      },
+      "contracts": {
+        "title": "Contracts",
+        "desc": "Leases, tenants, payments, and terminations"
+      },
+      "reports": {
+        "title": "Reports",
+        "desc": "Financial and operational reporting"
+      },
+      "debts": {
+        "title": "Debts",
+        "desc": "Loans, creditors, and installments"
+      },
+      "finance": {
+        "title": "Finance",
+        "desc": "Income and expense transactions"
+      },
+      "vouchers": {
+        "title": "Vouchers",
+        "desc": "Payment requests and approval workflow"
+      }
+    }
+  },
+  "login": {
+    "subtitle": "Sign in with your account",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "signedIn": "Signed in"
+  },
+  "common": {
+    "required": "Required"
+  }
+}

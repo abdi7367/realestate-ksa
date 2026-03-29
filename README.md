@@ -76,6 +76,8 @@ The dev server defaults to **http://localhost:5173**. Requests to `/api` are pro
 
 For production builds, set `VITE_API_URL` to your API origin (see `frontend/.env.example`).
 
+**Language:** The SPA uses **i18next** with English and Arabic. Choosing **العربية** sets **RTL** (`dir="rtl"`), loads Ant Design’s **Arabic locale** for built-in strings, and applies **Noto Sans Arabic**. The choice is stored in `localStorage` (`realestate_locale`). Dashboard, shell navigation, and login are translated; other pages remain English until you extend `frontend/src/i18n/locales/*.json`.
+
 ## Celery (background tasks)
 
 Scheduled jobs (e.g. expiring contracts, overdue debt installments) are defined in `core/celery.py`. You need Redis and two processes:

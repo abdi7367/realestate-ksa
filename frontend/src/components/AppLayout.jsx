@@ -1,77 +1,89 @@
-import { Layout, Menu, theme, Typography, Button, Space } from 'antd'
+import { Layout, Menu, theme, Typography, Button, Space, Select } from 'antd'
 import {
   AccountBookOutlined,
   BankOutlined,
   FileDoneOutlined,
   FileTextOutlined,
+  GlobalOutlined,
   HomeOutlined,
   LogoutOutlined,
   SolutionOutlined,
   WalletOutlined,
 } from '@ant-design/icons'
+import { useMemo } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 
 const { Header, Sider, Content } = Layout
-
-const items = [
-  { key: '/', icon: <HomeOutlined />, label: <Link to="/">Dashboard</Link> },
-  {
-    key: '/properties',
-    icon: <BankOutlined />,
-    label: <Link to="/properties">Properties</Link>,
-  },
-  {
-    key: '/reports',
-    icon: <FileTextOutlined />,
-    label: <Link to="/reports">Reports</Link>,
-  },
-  {
-    key: '/contracts',
-    icon: <SolutionOutlined />,
-    label: <Link to="/contracts">Contracts</Link>,
-  },
-  {
-    key: '/debts',
-    icon: <AccountBookOutlined />,
-    label: <Link to="/debts">Debts</Link>,
-  },
-  {
-    key: '/finance',
-    icon: <WalletOutlined />,
-    label: <Link to="/finance">Finance</Link>,
-  },
-  {
-    key: '/vouchers',
-    icon: <FileDoneOutlined />,
-    label: <Link to="/vouchers">Vouchers</Link>,
-  },
-]
 
 export function AppLayout() {
   const { token } = theme.useToken()
   const location = useLocation()
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
+  const { t, i18n } = useTranslation()
+
+  const menuItems = useMemo(
+    () => [
+      {
+        key: '/',
+        icon: <HomeOutlined />,
+        label: <Link to="/">{t('layout.nav.dashboard')}</Link>,
+      },
+      {
+        key: '/properties',
+        icon: <BankOutlined />,
+        label: <Link to="/properties">{t('layout.nav.properties')}</Link>,
+      },
+      {
+        key: '/reports',
+        icon: <FileTextOutlined />,
+        label: <Link to="/reports">{t('layout.nav.reports')}</Link>,
+      },
+      {
+        key: '/contracts',
+        icon: <SolutionOutlined />,
+        label: <Link to="/contracts">{t('layout.nav.contracts')}</Link>,
+      },
+      {
+        key: '/debts',
+        icon: <AccountBookOutlined />,
+        label: <Link to="/debts">{t('layout.nav.debts')}</Link>,
+      },
+      {
+        key: '/finance',
+        icon: <WalletOutlined />,
+        label: <Link to="/finance">{t('layout.nav.finance')}</Link>,
+      },
+      {
+        key: '/vouchers',
+        icon: <FileDoneOutlined />,
+        label: <Link to="/vouchers">{t('layout.nav.vouchers')}</Link>,
+      },
+    ],
+    [t],
+  )
 
   return (
     <Layout style={{ minHeight: '100vh', width: '100%' }}>
-      <Sider breakpoint="lg" collapsedWidth="0" theme="dark" width={220}>
+      <Sider breakpoint="lg" collapsedWidth="0" theme="dark" width={230}>
         <div
           style={{
-            padding: '16px 12px',
+            padding: '18px 14px',
             fontWeight: 600,
             color: token.colorWhite,
-            fontSize: 14,
+            fontSize: 15,
+            letterSpacing: '0.02em',
           }}
         >
-          Real Estate KSA
+          {t('brand')}
         </div>
         <Menu
           theme="dark"
           mode="inline"
           selectedKeys={[location.pathname === '/' ? '/' : location.pathname]}
-          items={items}
+          items={menuItems}
         />
       </Sider>
       <Layout style={{ flex: 1, minWidth: 0 }}>
@@ -85,10 +97,23 @@ export function AppLayout() {
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
           }}
         >
-          <Typography.Text type="secondary">
-            Property management
-          </Typography.Text>
-          <Space>
+          <Typography.Text type="secondary">{t('layout.tagline')}</Typography.Text>
+          <Space size="middle" wrap>
+            <Space size={4}>
+              <GlobalOutlined />
+              <Typography.Text type="secondary">{t('layout.language')}</Typography.Text>
+              <Select
+                size="small"
+                value={i18n.language}
+                onChange={(lng) => i18n.changeLanguage(lng)}
+                options={[
+                  { value: 'en', label: 'English' },
+                  { value: 'ar', label: 'العربية' },
+                ]}
+                style={{ width: 130 }}
+                popupMatchSelectWidth={false}
+              />
+            </Space>
             {isAuthenticated && user && (
               <Typography.Text>
                 {user.username}
@@ -103,7 +128,7 @@ export function AppLayout() {
                   navigate('/login')
                 }}
               >
-                Log out
+                {t('layout.logout')}
               </Button>
             )}
           </Space>

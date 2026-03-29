@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Col,
+  Descriptions,
   Divider,
   Empty,
   Form,
@@ -15,6 +16,7 @@ import {
   Space,
   Table,
   Tag,
+  Tooltip,
   Typography,
   theme,
 } from 'antd'
@@ -45,6 +47,7 @@ export function PropertiesPage() {
   const { user } = useAuth()
   const [page, setPage] = useState(1)
   const [addOpen, setAddOpen] = useState(false)
+  const [ownerModalProperty, setOwnerModalProperty] = useState(null)
   const [form] = Form.useForm()
 
   const canManage = ['admin', 'property_manager'].includes(user?.role)
@@ -119,6 +122,25 @@ export function PropertiesPage() {
   }
 
   const columns = [
+    {
+      title: '',
+      key: 'owner_btn',
+      width: 56,
+      align: 'center',
+      fixed: 'left',
+      render: (_, row) => (
+        <Tooltip title="Registered owner details">
+          <Button
+            type="primary"
+            shape="circle"
+            size="small"
+            icon={<PlusOutlined />}
+            aria-label="Show owner details"
+            onClick={() => setOwnerModalProperty(row)}
+          />
+        </Tooltip>
+      ),
+    },
     {
       title: 'Owner ID',
       dataIndex: 'owner_reference',
@@ -287,7 +309,7 @@ export function PropertiesPage() {
                   }
                 : false
             }
-            scroll={{ x: 1120 }}
+            scroll={{ x: 1180 }}
             size="middle"
           />
         )}
@@ -480,6 +502,58 @@ export function PropertiesPage() {
             </Space>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title={
+          ownerModalProperty ? (
+            <Space direction="vertical" size={0}>
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                Registered owner
+              </Typography.Text>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                {ownerModalProperty.name}
+              </Typography.Title>
+            </Space>
+          ) : null
+        }
+        open={Boolean(ownerModalProperty)}
+        onCancel={() => setOwnerModalProperty(null)}
+        footer={
+          <Button type="primary" onClick={() => setOwnerModalProperty(null)}>
+            Close
+          </Button>
+        }
+        width={520}
+        destroyOnClose
+      >
+        {ownerModalProperty && (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Owner ID">
+              {ownerModalProperty.owner_reference || '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Full name">
+              {ownerModalProperty.owner_full_name || '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="National ID / Iqama">
+              {ownerModalProperty.owner_national_id || '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Phone">
+              {ownerModalProperty.owner_phone || '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Email">
+              {ownerModalProperty.owner_email || '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Bank / IBAN">
+              {ownerModalProperty.owner_bank_iban || '—'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Address">
+              {ownerModalProperty.owner_address?.trim()
+                ? ownerModalProperty.owner_address
+                : '—'}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
       </Modal>
     </div>
   )
