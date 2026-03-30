@@ -42,6 +42,7 @@ export function VouchersPage() {
   const [status, setStatus] = useState(undefined)
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  const [rejectState, setRejectState] = useState({ open: false, voucherId: null, reason: '' })
   const [form] = Form.useForm()
 
   const role = user?.role
@@ -119,6 +120,22 @@ export function VouchersPage() {
       property: v.property,
       approval_status: 'draft',
     })
+  }
+
+  const openRejectModal = (voucherId) => {
+    setRejectState({ open: true, voucherId, reason: '' })
+  }
+
+  const closeRejectModal = () => {
+    setRejectState({ open: false, voucherId: null, reason: '' })
+  }
+
+  const submitReject = () => {
+    if (!rejectState.voucherId) return
+    rejectMut.mutate(
+      { id: rejectState.voucherId, reason: rejectState.reason.trim() },
+      { onSuccess: closeRejectModal },
+    )
   }
 
   return (
@@ -242,10 +259,7 @@ export function VouchersPage() {
                       size="small"
                       danger
                       loading={rejectMut.isPending}
-                      onClick={() => {
-                        const reason = window.prompt('Rejection reason (optional)') || ''
-                        rejectMut.mutate({ id: row.id, reason })
-                      }}
+                      onClick={() => openRejectModal(row.id)}
                     >
                       Reject
                     </Button>
@@ -255,6 +269,28 @@ export function VouchersPage() {
           },
         ]}
       />
+
+      <Modal
+        title="Reject voucher"
+        open={rejectState.open}
+        onCancel={closeRejectModal}
+        onOk={submitReject}
+        okText="Reject voucher"
+        okButtonProps={{ danger: true, loading: rejectMut.isPending }}
+      >
+        <Form layout="vertical">
+          <Form.Item label="Reason (optional)">
+            <Input.TextArea
+              rows={4}
+              value={rejectState.reason}
+              onChange={(e) =>
+                setRejectState((prev) => ({ ...prev, reason: e.target.value }))
+              }
+              placeholder="Add context for rejection"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         title="New voucher"

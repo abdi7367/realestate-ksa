@@ -1,15 +1,16 @@
 import django_filters
 from rest_framework import filters
 
-from .models import Contract, Payment
+from .models import Contract, Payment, Tenant
 
 
 class ContractFilter(django_filters.FilterSet):
     """GET /api/contracts/?status=active&payment_schedule=monthly&..."""
+    property = django_filters.NumberFilter(field_name='unit__property', lookup_expr='exact')
 
     class Meta:
         model = Contract
-        fields = ['status', 'payment_schedule', 'unit', 'tenant']
+        fields = ['status', 'payment_schedule', 'unit', 'tenant', 'property']
 
 
 class PaymentFilter(django_filters.FilterSet):
@@ -66,3 +67,18 @@ class PaymentSearchFilter(filters.SearchFilter):
             qs_id = queryset.filter(contract_id=int(term))
             return (qs_text | qs_id).distinct()
         return qs_text
+
+
+class TenantFilter(django_filters.FilterSet):
+    """GET /api/tenants/?created_at_from=...&created_at_to=..."""
+
+    created_at_from = django_filters.DateFilter(
+        field_name='created_at', lookup_expr='date__gte'
+    )
+    created_at_to = django_filters.DateFilter(
+        field_name='created_at', lookup_expr='date__lte'
+    )
+
+    class Meta:
+        model = Tenant
+        fields = ['national_id']

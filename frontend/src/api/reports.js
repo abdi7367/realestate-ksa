@@ -9,6 +9,7 @@ const PATHS = {
   property_profitability: '/api/reports/property-profitability/',
   vouchers: '/api/reports/vouchers/',
   cash_flow: '/api/reports/cash-flow/',
+  cash_flow_pdf: '/api/reports/cash-flow/pdf/',
   income_statement: '/api/reports/income-statement/',
   expenses: '/api/reports/expenses/',
   ownership: '/api/reports/ownership/',
@@ -34,6 +35,26 @@ export async function fetchReport(reportId, params = {}) {
   }
   const { data } = await api.get(path, { params: omitEmpty(params) })
   return data
+}
+
+export async function downloadCashFlowPdf(params = {}) {
+  const res = await api.get(PATHS.cash_flow_pdf, {
+    params: omitEmpty(params),
+    responseType: 'blob',
+  })
+  const blob = res.data
+  if (!(blob instanceof Blob) || blob.size === 0) {
+    throw new Error('Empty PDF response')
+  }
+  const head = new Uint8Array(await blob.slice(0, 5).arrayBuffer())
+  const sig = String.fromCharCode(...head)
+  if (!sig.startsWith('%PDF')) {
+    const text = await blob.text()
+    throw new Error(
+      (text && text.slice(0, 400)) || 'Server did not return a PDF file',
+    )
+  }
+  return blob
 }
 
 export const REPORT_OPTIONS = [

@@ -14,9 +14,10 @@ from .filters import (
     ContractSearchFilter,
     PaymentFilter,
     PaymentSearchFilter,
+    TenantFilter,
 )
 from .models import Contract, Payment, Tenant
-from .serializers import ContractSerializer, PaymentSerializer, ContractSummarySerializer
+from .serializers import ContractSerializer, PaymentSerializer, ContractSummarySerializer, TenantSerializer
 from .services import ContractService, PaymentService
 
 
@@ -31,6 +32,27 @@ def _validation_error_message(exc: ValidationError) -> str:
     if msgs:
         return '; '.join(str(m) for m in msgs)
     return str(exc)
+
+
+class TenantViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Tenant.objects.all()
+    serializer_class = TenantSerializer
+    permission_classes = [ContractManagementPermission]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_class = TenantFilter
+    search_fields = [
+        'tenant_reference',
+        'full_name',
+        'national_id',
+        'phone',
+        'email',
+    ]
+    ordering_fields = ['created_at', 'full_name', 'tenant_reference', 'id']
+    ordering = ['-created_at']
 
 
 class ContractViewSet(viewsets.ModelViewSet):
@@ -93,7 +115,21 @@ class ContractViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        tenant = Tenant.objects.create(**tenant_data)
+
+        # Reuse existing tenant by national ID to avoid duplicate tenant records.
+        tenant, created = Tenant.objects.get_or_create(
+            national_id=tenant_data['national_id'],
+            defaults=tenant_data,
+        )
+        if not created:
+            dirty = False
+            for field in ('full_name', 'phone', 'email', 'nationality', 'date_of_birth'):
+                incoming = tenant_data.get(field)
+                if incoming and incoming != getattr(tenant, field):
+                    setattr(tenant, field, incoming)
+                    dirty = True
+            if dirty:
+                tenant.save(update_fields=['full_name', 'phone', 'email', 'nationality', 'date_of_birth'])
 
         try:
             contract = ContractService.create_contract(

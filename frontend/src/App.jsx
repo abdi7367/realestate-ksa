@@ -9,6 +9,7 @@ import { AppLayout } from './components/AppLayout'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { PropertiesPage } from './pages/PropertiesPage'
+import { PropertyDetailPage } from './pages/PropertyDetailPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { ContractsPage } from './pages/ContractsPage'
 import { DebtsPage } from './pages/DebtsPage'
@@ -29,6 +30,7 @@ function AppRoutes() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/properties" element={<PropertiesPage />} />
+          <Route path="/properties/:id" element={<PropertyDetailPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/contracts" element={<ContractsPage />} />
           <Route path="/debts" element={<DebtsPage />} />

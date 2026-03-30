@@ -50,6 +50,7 @@ export function FinancePage() {
   const [propertyId, setPropertyId] = useState(undefined)
   const [txType, setTxType] = useState(undefined)
   const [category, setCategory] = useState(undefined)
+  const [dateRange, setDateRange] = useState(null)
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [form] = Form.useForm()
@@ -81,9 +82,11 @@ export function FinancePage() {
     if (propertyId) p.property = propertyId
     if (txType) p.transaction_type = txType
     if (category) p.category = category
+    if (dateRange?.[0]) p.date_from = dateRange[0].format('YYYY-MM-DD')
+    if (dateRange?.[1]) p.date_to = dateRange[1].format('YYYY-MM-DD')
     if (search.trim()) p.search = search.trim()
     return p
-  }, [page, propertyId, txType, category, search])
+  }, [page, propertyId, txType, category, dateRange, search])
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['transactions', listParams],
@@ -91,11 +94,15 @@ export function FinancePage() {
   })
 
   const { data: summaryData } = useQuery({
-    queryKey: ['transactions', 'summary', propertyId],
+    queryKey: ['transactions', 'summary', propertyId, dateRange?.[0]?.format('YYYY-MM-DD'), dateRange?.[1]?.format('YYYY-MM-DD')],
     queryFn: () =>
       api
         .get('/api/transactions/summary/', {
-          params: propertyId ? { property_id: propertyId } : {},
+          params: {
+            ...(propertyId ? { property_id: propertyId } : {}),
+            ...(dateRange?.[0] ? { date_from: dateRange[0].format('YYYY-MM-DD') } : {}),
+            ...(dateRange?.[1] ? { date_to: dateRange[1].format('YYYY-MM-DD') } : {}),
+          },
         })
         .then((r) => r.data),
   })
@@ -203,6 +210,14 @@ export function FinancePage() {
               setSearch(v)
               setPage(1)
             }}
+          />
+          <DatePicker.RangePicker
+            value={dateRange}
+            onChange={(v) => {
+              setDateRange(v)
+              setPage(1)
+            }}
+            allowClear
           />
           {canWrite && (
             <Button type="primary" onClick={() => setCreateOpen(true)}>

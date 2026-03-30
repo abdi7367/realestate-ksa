@@ -21,6 +21,7 @@ import {
   theme,
 } from 'antd'
 import { PlusOutlined, HomeOutlined } from '@ant-design/icons'
+import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
@@ -163,7 +164,16 @@ export function PropertiesPage() {
       ellipsis: true,
       render: (text, row) => (
         <span>
-          <Typography.Text strong>{text}</Typography.Text>
+          <Typography.Text strong>
+            <Link
+              to={`/properties/${row.id}`}
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
+            >
+              {text}
+            </Link>
+          </Typography.Text>
           {row.owner_full_name ? (
             <Typography.Text
               type="secondary"

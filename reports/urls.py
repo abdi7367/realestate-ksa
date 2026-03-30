@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     CashFlowReportView,
+    CashFlowReportPdfView,
     ContractReportView,
     DebtRepaymentReportView,
     ExpenseReportView,
@@ -23,6 +24,7 @@ urlpatterns = [
     path('reports/property-profitability/', PropertyProfitabilityReportView.as_view()),
     path('reports/vouchers/', VoucherReportView.as_view()),
     path('reports/cash-flow/', CashFlowReportView.as_view()),
+    path('reports/cash-flow/pdf/', CashFlowReportPdfView.as_view()),
     path('reports/income-statement/', IncomeStatementReportView.as_view()),
     path('reports/expenses/', ExpenseReportView.as_view()),
     path('reports/ownership/', OwnershipReportView.as_view()),

@@ -167,6 +167,35 @@ class ContractCreateAPITests(APITestCase):
         self.assertEqual(data['tenant_name'], 'API Tenant')
         self.unit.refresh_from_db()
         self.assertEqual(self.unit.rental_status, 'occupied')
+        self.assertEqual(Tenant.objects.filter(national_id='1122334455').count(), 1)
+
+    def test_create_contract_reuses_existing_tenant_by_national_id(self):
+        self.client.force_authenticate(user=self.pm)
+        existing = Tenant.objects.create(
+            full_name='Existing Tenant',
+            national_id='5566778899',
+            phone='+966500111222',
+        )
+
+        payload = {
+            'unit': self.unit.id,
+            'tenant_data': {
+                'full_name': 'Updated Existing Tenant',
+                'national_id': '5566778899',
+                'phone': '+966500333444',
+                'email': 'existing.tenant@example.com',
+                'nationality': 'SA',
+            },
+            'monthly_rent': '4000.00',
+            'start_date': '2026-06-01',
+            'duration_months': 12,
+        }
+        r = self.client.post('/api/contracts/', payload, format='json')
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(Tenant.objects.filter(national_id='5566778899').count(), 1)
+        existing.refresh_from_db()
+        self.assertEqual(existing.full_name, 'Updated Existing Tenant')
+        self.assertEqual(existing.phone, '+966500333444')
 
     def test_create_contract_400_when_tenant_data_missing(self):
         self.client.force_authenticate(user=self.pm)
@@ -210,3 +239,22 @@ class ContractCreateAPITests(APITestCase):
         }
         r = self.client.post('/api/contracts/', payload, format='json')
         self.assertEqual(r.status_code, 401)
+
+
+class TenantReadAPITests(APITestCase):
+    def setUp(self):
+        self.pm = User.objects.create_user(
+            username='tenant_api_pm',
+            password='testpass123',
+            role='property_manager',
+        )
+        Tenant.objects.create(full_name='Ali Hassan', national_id='1000000001', phone='+966500000001')
+        Tenant.objects.create(full_name='Noura Salem', national_id='1000000002', phone='+966500000002')
+
+    def test_list_tenants_with_search(self):
+        self.client.force_authenticate(user=self.pm)
+        r = self.client.get('/api/tenants/?search=Noura')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertGreaterEqual(r.data.get('count', 0), 1)
+        names = [item['full_name'] for item in r.data.get('results', [])]
+        self.assertIn('Noura Salem', names)
