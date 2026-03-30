@@ -12,7 +12,7 @@ import {
   WalletOutlined,
 } from '@ant-design/icons'
 import { useAuth } from '../context/AuthContext'
-import heroImg from '../assets/hero.svg'
+import heroImg from '../assets/hero-new.jpg'
 
 const MODULES = [
   {
@@ -53,17 +53,37 @@ const MODULES = [
   },
 ]
 
+function roleDisplayName(role, t, i18n) {
+  if (!role) return t('dashboard.roleGuest')
+  const key = `dashboard.roles.${role}`
+  if (i18n.exists(key)) return t(key)
+  return role
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 export function DashboardPage() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const rtl = i18n.dir() === 'rtl'
   const Arrow = rtl ? LeftOutlined : RightOutlined
+  const roleLabel = roleDisplayName(user?.role, t, i18n)
 
   return (
-    <div className="dashboard-page">
-      <div className="dashboard-hero">
-        <Row gutter={[32, 32]} align="middle">
-          <Col xs={24} lg={14}>
+    <div className={`dashboard-page${rtl ? ' dashboard-page--rtl' : ''}`}>
+      <div
+        className={`dashboard-hero${rtl ? ' dashboard-hero--rtl' : ''}`}
+        style={{
+          '--dashboard-hero-image': `url(${heroImg})`,
+        }}
+      >
+        <Row
+          gutter={[24, 24]}
+          align="middle"
+          className={`dashboard-hero-row${rtl ? ' dashboard-hero-row--rtl' : ''}`}
+        >
+          <Col xs={24} lg={15} className={rtl ? 'dashboard-hero-copy dashboard-hero-copy--rtl' : 'dashboard-hero-copy'}>
             <Typography.Text type="secondary" className="dashboard-eyebrow">
               {t('dashboard.heroEyebrow')}
             </Typography.Text>
@@ -74,12 +94,17 @@ export function DashboardPage() {
               {t('dashboard.heroDesc')}
             </Typography.Paragraph>
             <Typography.Paragraph className="dashboard-welcome-line" style={{ marginBottom: 0 }}>
-              <strong>{t('dashboard.welcome')}</strong>
-              {user?.username ? `, ${user.username}` : ''}. {t('dashboard.chooseModule')}
+              {t('dashboard.signedInAs')}{' '}
+              <strong>{roleLabel}</strong>
+              {user?.username ? ` (${user.username})` : ''}
             </Typography.Paragraph>
           </Col>
-          <Col xs={24} lg={10} className="dashboard-hero-visual">
-            <img src={heroImg} alt="" className="dashboard-hero-art" />
+          <Col xs={24} lg={9}>
+            <div className="dashboard-hero-visual">
+              <div className="dashboard-hero-art-wrapper">
+                <img src={heroImg} alt={t('dashboard.heroImageAlt')} className="dashboard-hero-art" />
+              </div>
+            </div>
           </Col>
         </Row>
       </div>

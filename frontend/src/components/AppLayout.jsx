@@ -23,6 +23,14 @@ export function AppLayout() {
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
   const { t, i18n } = useTranslation()
+  const isRtl = i18n.language === 'ar'
+
+  const roleLabel = useMemo(() => {
+    const role = user?.role
+    if (!role) return ''
+    const key = `dashboard.roles.${role}`
+    return i18n.exists(key) ? t(key) : role
+  }, [user?.role, t, i18n])
 
   const menuItems = useMemo(
     () => [
@@ -66,7 +74,13 @@ export function AppLayout() {
   )
 
   return (
-    <Layout style={{ minHeight: '100vh', width: '100%' }}>
+    <Layout
+      style={{
+        minHeight: '100vh',
+        width: '100%',
+        flexDirection: isRtl ? 'row-reverse' : 'row',
+      }}
+    >
       <Sider breakpoint="lg" collapsedWidth="0" theme="dark" width={230}>
         <div
           style={{
@@ -74,7 +88,9 @@ export function AppLayout() {
             fontWeight: 600,
             color: token.colorWhite,
             fontSize: 15,
-            letterSpacing: '0.02em',
+            letterSpacing: isRtl ? '0' : '0.02em',
+            textAlign: isRtl ? 'right' : 'left',
+            lineHeight: 1.35,
           }}
         >
           {t('brand')}
@@ -117,7 +133,7 @@ export function AppLayout() {
             {isAuthenticated && user && (
               <Typography.Text>
                 {user.username}
-                {user.role ? ` · ${user.role}` : ''}
+                {user.role ? ` · ${roleLabel}` : ''}
               </Typography.Text>
             )}
             {isAuthenticated && (

@@ -30,6 +30,7 @@ function applyDocumentDirection(lng) {
   const rtl = lng === 'ar'
   document.documentElement.dir = rtl ? 'rtl' : 'ltr'
   document.documentElement.lang = lng
+  document.title = i18n.t('brand')
   try {
     localStorage.setItem(STORAGE_KEY, lng)
   } catch {

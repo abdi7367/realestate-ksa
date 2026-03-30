@@ -1,7 +1,7 @@
 {
-  "brand": "Real Estate KSA",
+  "brand": "Real Estate Property Management System",
   "layout": {
-    "tagline": "Property management",
+    "tagline": "Property management suite",
     "logout": "Log out",
     "language": "Language",
     "nav": {
@@ -18,9 +18,18 @@
     "title": "Dashboard",
     "welcome": "Welcome back",
     "chooseModule": "Choose a module to get started.",
-    "heroEyebrow": "Operations hub",
-    "heroTitle": "Your portfolio, one workspace",
-    "heroDesc": "Properties, leases, rent, debts, and approvals — with access tailored to your role.",
+    "heroEyebrow": "Rental management",
+    "heroTitle": "Welcome to Rental Management System",
+    "heroDesc": "Manage properties, contracts, finance, and reporting in one organized workspace.",
+    "signedInAs": "Signed in as",
+    "roleGuest": "User",
+    "heroImageAlt": "Landmark tower and palms",
+    "roles": {
+      "admin": "Admin",
+      "property_manager": "Property Manager",
+      "accountant": "Accountant",
+      "finance_manager": "Finance Manager"
+    },
     "open": "Open",
     "cards": {
       "properties": {
