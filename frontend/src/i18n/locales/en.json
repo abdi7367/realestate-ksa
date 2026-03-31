@@ -67,5 +67,27 @@
   },
   "common": {
     "required": "Required"
+  },
+  "reports": {
+    "title": "Reports",
+    "intro": "Step 1: browse API-backed reports. Pick a report, set filters, then run.",
+    "output": "Output",
+    "property": "Property",
+    "period": "Period",
+    "category": "Category",
+    "total": "Total",
+    "city": "City",
+    "ownershipPct": "Ownership %",
+    "mgmtFeePct": "Mgmt fee %",
+    "agreement": "Agreement",
+    "yes": "Yes",
+    "no": "No",
+    "noRows": "No rows in this report.",
+    "charts": {
+      "cashFlow": "Cash flow snapshot",
+      "categoryDist": "Category distribution",
+      "categoryShare": "Share by category",
+      "debtProgress": "Debt repayment progress"
+    }
   }
 }

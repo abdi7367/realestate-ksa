@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
   Button,
@@ -33,18 +34,34 @@ import {
 import { api } from '../api/client'
 import { REPORT_OPTIONS, fetchReport, downloadCashFlowPdf } from '../api/reports'
 
-function reportPropertyContextItems(data) {
+function ReportBidiText({ value }) {
+  if (value === null || value === undefined || value === '') {
+    return <span>—</span>
+  }
+  return (
+    <span dir="auto" className="report-bidi-value">
+      {String(value)}
+    </span>
+  )
+}
+
+function reportPropertyContextItems(data, t) {
   if (!data) return []
   const f = data.filters
   if (f && typeof f === 'object' && f.property_name) {
     return [
       {
         key: 'ctx-property',
-        label: 'Property',
-        children:
-          f.property_id != null && f.property_id !== ''
-            ? `${f.property_name} (ID ${f.property_id})`
-            : String(f.property_name),
+        label: t('reports.property'),
+        children: (
+          <ReportBidiText
+            value={
+              f.property_id != null && f.property_id !== ''
+                ? `${f.property_name} (ID ${f.property_id})`
+                : String(f.property_name)
+            }
+          />
+        ),
       },
     ]
   }
@@ -52,8 +69,8 @@ function reportPropertyContextItems(data) {
     return [
       {
         key: 'ctx-property',
-        label: 'Property',
-        children: `ID ${f.property_id}`,
+        label: t('reports.property'),
+        children: <ReportBidiText value={`ID ${f.property_id}`} />,
       },
     ]
   }
@@ -61,11 +78,16 @@ function reportPropertyContextItems(data) {
     return [
       {
         key: 'ctx-property',
-        label: 'Property',
-        children:
-          data.property_id != null && data.property_id !== ''
-            ? `${data.property_name} (ID ${data.property_id})`
-            : String(data.property_name),
+        label: t('reports.property'),
+        children: (
+          <ReportBidiText
+            value={
+              data.property_id != null && data.property_id !== ''
+                ? `${data.property_name} (ID ${data.property_id})`
+                : String(data.property_name)
+            }
+          />
+        ),
       },
     ]
   }
@@ -73,8 +95,8 @@ function reportPropertyContextItems(data) {
     return [
       {
         key: 'ctx-property',
-        label: 'Property',
-        children: `ID ${data.property_id}`,
+        label: t('reports.property'),
+        children: <ReportBidiText value={`ID ${data.property_id}`} />,
       },
     ]
   }
@@ -88,17 +110,18 @@ function resultsTableColumns(sampleRow) {
     dataIndex: key,
     key,
     ellipsis: true,
-    render: (v) =>
-      v === null || v === undefined || v === '' ? '—' : String(v),
+    render: (v) => <ReportBidiText value={v} />,
   }))
 }
 
 function ReportOutput({ data }) {
+  const { t } = useTranslation()
   if (!data) return null
 
   if (Array.isArray(data.results) && data.results.length > 0) {
     return (
       <Table
+        className="report-bidi-table"
         rowKey={(_, i) => String(i)}
         size="small"
         scroll={{ x: true }}
@@ -111,19 +134,21 @@ function ReportOutput({ data }) {
 
   if (Array.isArray(data.results) && data.results.length === 0) {
     return (
-      <Typography.Text type="secondary">No rows in this report.</Typography.Text>
+      <Typography.Text type="secondary">{t('reports.noRows')}</Typography.Text>
     )
   }
 
   if (Array.isArray(data.by_category) && data.by_category.length > 0) {
-    const propCtx = reportPropertyContextItems(data)
+    const propCtx = reportPropertyContextItems(data, t)
     const periodItem =
       data.date_from && data.date_to
         ? [
             {
               key: 'ctx-period',
-              label: 'Period',
-              children: `${data.date_from} → ${data.date_to}`,
+              label: t('reports.period'),
+              children: (
+                <ReportBidiText value={`${data.date_from} → ${data.date_to}`} />
+              ),
             },
           ]
         : []
@@ -140,11 +165,22 @@ function ReportOutput({ data }) {
           />
         )}
         <Table
+          className="report-bidi-table"
           rowKey={(_, i) => String(i)}
           size="small"
           columns={[
-            { title: 'Category', dataIndex: 'category', key: 'category' },
-            { title: 'Total', dataIndex: 'total', key: 'total', render: (v) => String(v) },
+            {
+              title: t('reports.category'),
+              dataIndex: 'category',
+              key: 'category',
+              render: (v) => <ReportBidiText value={v} />,
+            },
+            {
+              title: t('reports.total'),
+              dataIndex: 'total',
+              key: 'total',
+              render: (v) => <ReportBidiText value={v} />,
+            },
           ]}
           dataSource={data.by_category}
           pagination={false}
@@ -156,36 +192,51 @@ function ReportOutput({ data }) {
   if (Array.isArray(data.owners) && data.owners.length > 0) {
     const items = data.owners.map((owner, idx) => ({
       key: String(idx),
-      label: `${owner.owner_name} (${owner.owner_id})`,
+      label: (
+        <ReportBidiText value={`${owner.owner_name} (${owner.owner_id})`} />
+      ),
       children: (
         <div>
           <Typography.Text type="secondary">
             {owner.ownership_type} · {owner.properties?.length ?? 0} properties
           </Typography.Text>
           <Table
+            className="report-bidi-table"
             style={{ marginTop: 8 }}
             size="small"
             rowKey={(r) => `${r.property_id}-${r.property_name}`}
             pagination={false}
             dataSource={owner.properties || []}
             columns={[
-              { title: 'Property', dataIndex: 'property_name', key: 'pn' },
-              { title: 'City', dataIndex: 'property_city', key: 'pc' },
               {
-                title: 'Ownership %',
+                title: t('reports.property'),
+                dataIndex: 'property_name',
+                key: 'pn',
+                render: (v) => <ReportBidiText value={v} />,
+              },
+              {
+                title: t('reports.city'),
+                dataIndex: 'property_city',
+                key: 'pc',
+                render: (v) => <ReportBidiText value={v} />,
+              },
+              {
+                title: t('reports.ownershipPct'),
                 dataIndex: 'ownership_percentage',
                 key: 'op',
+                render: (v) => <ReportBidiText value={v} />,
               },
               {
-                title: 'Mgmt fee %',
+                title: t('reports.mgmtFeePct'),
                 dataIndex: 'management_fee_percentage',
                 key: 'mf',
+                render: (v) => <ReportBidiText value={v} />,
               },
               {
-                title: 'Agreement',
+                title: t('reports.agreement'),
                 dataIndex: 'has_management_agreement',
                 key: 'ha',
-                render: (v) => (v ? 'Yes' : 'No'),
+                render: (v) => (v ? t('reports.yes') : t('reports.no')),
               },
             ]}
           />
@@ -197,15 +248,21 @@ function ReportOutput({ data }) {
     )
   }
 
-  const ctx = reportPropertyContextItems(data)
+  const ctx = reportPropertyContextItems(data, t)
   const entries = Object.entries(data).filter(
     ([k]) => k !== 'filters' && !Array.isArray(data[k]),
   )
   const items = entries.map(([k, v]) => ({
     key: k,
-    label: k.replace(/_/g, ' '),
+    label: <ReportBidiText value={k.replace(/_/g, ' ')} />,
     children:
-      typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v),
+      typeof v === 'object' && v !== null ? (
+        <span dir="ltr" className="report-bidi-value">
+          {JSON.stringify(v)}
+        </span>
+      ) : (
+        <ReportBidiText value={v} />
+      ),
   }))
   return (
     <Descriptions bordered size="small" column={1} items={[...ctx, ...items]} />
@@ -228,6 +285,7 @@ function toSafeFilenamePart(value) {
 const CHART_COLORS = ['#0d9488', '#2563eb', '#f59e0b', '#7c3aed', '#ef4444', '#14b8a6']
 
 function ReportCharts({ reportId, data }) {
+  const { t } = useTranslation()
   if (!data) return null
 
   if (reportId === 'cash_flow') {
@@ -239,8 +297,8 @@ function ReportCharts({ reportId, data }) {
       { name: 'Net tx', value: toNum(data.net_operating_transactions) },
     ]
     return (
-      <Card size="small" title="Cash Flow Snapshot" style={{ marginBottom: 16 }}>
-        <div style={{ height: 280 }}>
+      <Card size="small" title={t('reports.charts.cashFlow')} style={{ marginBottom: 16 }}>
+        <div className="report-chart-ltr" style={{ height: 280, minHeight: 280, minWidth: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -264,8 +322,8 @@ function ReportCharts({ reportId, data }) {
     return (
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={14}>
-          <Card size="small" title="Category Distribution">
-            <div style={{ height: 280 }}>
+          <Card size="small" title={t('reports.charts.categoryDist')}>
+            <div className="report-chart-ltr" style={{ height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -279,8 +337,8 @@ function ReportCharts({ reportId, data }) {
           </Card>
         </Col>
         <Col xs={24} lg={10}>
-          <Card size="small" title="Share by Category">
-            <div style={{ height: 280 }}>
+          <Card size="small" title={t('reports.charts.categoryShare')}>
+            <div className="report-chart-ltr" style={{ height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={chartData} dataKey="total" nameKey="name" outerRadius={92} label>
@@ -306,8 +364,8 @@ function ReportCharts({ reportId, data }) {
       remaining: toNum(r.remaining_balance),
     }))
     return (
-      <Card size="small" title="Debt Repayment Progress" style={{ marginBottom: 16 }}>
-        <div style={{ height: 320 }}>
+      <Card size="small" title={t('reports.charts.debtProgress')} style={{ marginBottom: 16 }}>
+        <div className="report-chart-ltr" style={{ height: 320, minHeight: 320, minWidth: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} layout="vertical" margin={{ left: 30, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -328,6 +386,7 @@ function ReportCharts({ reportId, data }) {
 }
 
 export function ReportsPage() {
+  const { t, i18n } = useTranslation()
   const [form] = Form.useForm()
   const [submitted, setSubmitted] = useState(null)
 
@@ -393,7 +452,8 @@ export function ReportsPage() {
     if (!submitted?.reportId) return
     if (submitted.reportId !== 'cash_flow') return
     try {
-      const blob = await downloadCashFlowPdf(submitted.params)
+      const pdfLang = i18n?.language?.toLowerCase().startsWith('ar') ? 'ar' : 'en'
+      const blob = await downloadCashFlowPdf({ ...submitted.params, lang: pdfLang })
       if (!(blob instanceof Blob) || blob.size === 0) {
         message.error('PDF download failed (empty response). Please refresh and try again.')
         return
@@ -449,11 +509,9 @@ export function ReportsPage() {
   return (
     <Card bordered={false}>
       <Typography.Title level={4} style={{ marginTop: 0 }}>
-        Reports
+        {t('reports.title')}
       </Typography.Title>
-      <Typography.Paragraph type="secondary">
-        Step 1: browse API-backed reports. Pick a report, set filters, then run.
-      </Typography.Paragraph>
+      <Typography.Paragraph type="secondary">{t('reports.intro')}</Typography.Paragraph>
 
       <Form
         form={form}
@@ -597,7 +655,7 @@ export function ReportsPage() {
 
       <ReportCharts reportId={submitted?.reportId} data={data} />
 
-      <Card size="small" title="Output" loading={isFetching} style={{ marginTop: 16 }}>
+      <Card size="small" title={t('reports.output')} loading={isFetching} style={{ marginTop: 16 }}>
         <ReportOutput data={data} />
       </Card>
     </Card>

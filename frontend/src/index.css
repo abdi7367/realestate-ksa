@@ -404,3 +404,14 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Reports: mixed Arabic/Latin — isolate runs; charts stay LTR for axes */
+.report-bidi-table .ant-table-cell {
+  unicode-bidi: plaintext;
+}
+.report-bidi-value {
+  unicode-bidi: plaintext;
+}
+.report-chart-ltr {
+  direction: ltr;
+}
