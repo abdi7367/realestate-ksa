@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
+  App as AntApp,
   Button,
   Card,
   Col,
@@ -10,7 +11,6 @@ import {
   Form,
   Input,
   InputNumber,
-  message,
   Row,
   Select,
   Space,
@@ -32,7 +32,12 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../api/client'
-import { REPORT_OPTIONS, fetchReport, downloadCashFlowPdf } from '../api/reports'
+import {
+  REPORT_OPTIONS,
+  fetchReport,
+  downloadCashFlowPdf,
+  downloadPropertyIncomePdf,
+} from '../api/reports'
 
 function ReportBidiText({ value }) {
   if (value === null || value === undefined || value === '') {
@@ -387,6 +392,7 @@ function ReportCharts({ reportId, data }) {
 
 export function ReportsPage() {
   const { t, i18n } = useTranslation()
+  const { message } = AntApp.useApp()
   const [form] = Form.useForm()
   const [submitted, setSubmitted] = useState(null)
 
@@ -450,10 +456,16 @@ export function ReportsPage() {
 
   const downloadPdf = async () => {
     if (!submitted?.reportId) return
-    if (submitted.reportId !== 'cash_flow') return
+    const reportId = submitted.reportId
+    const downloadable = ['cash_flow', 'property_income']
+    if (!downloadable.includes(reportId)) return
     try {
       const pdfLang = i18n?.language?.toLowerCase().startsWith('ar') ? 'ar' : 'en'
-      const blob = await downloadCashFlowPdf({ ...submitted.params, lang: pdfLang })
+      const params = { ...submitted.params, lang: pdfLang }
+      const blob =
+        reportId === 'cash_flow'
+          ? await downloadCashFlowPdf(params)
+          : await downloadPropertyIncomePdf(params)
       if (!(blob instanceof Blob) || blob.size === 0) {
         message.error('PDF download failed (empty response). Please refresh and try again.')
         return
@@ -474,7 +486,8 @@ export function ReportsPage() {
           : '')
       const propertyPart = slug ? `${slug}_` : ''
       a.href = url
-      a.download = `cash-flow_${propertyPart}${df}_to_${dt}.pdf`
+      const prefix = reportId === 'cash_flow' ? 'cash-flow' : 'property-income'
+      a.download = `${prefix}_${propertyPart}${df}_to_${dt}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -486,12 +499,26 @@ export function ReportsPage() {
         message.error('Session expired. Please login again, then retry the PDF download.')
         return
       }
-      const serverMsg =
-        typeof e?.response?.data === 'string'
-          ? e.response.data
-          : e?.response?.data
-            ? JSON.stringify(e.response.data)
-            : null
+      let serverMsg = null
+      try {
+        const data = e?.response?.data
+        if (typeof data === 'string') {
+          serverMsg = data
+        } else if (data instanceof Blob) {
+          const text = await data.text()
+          serverMsg = text
+        } else if (data && typeof data === 'object') {
+          // DRF commonly returns {detail: "..."} on errors.
+          serverMsg =
+            typeof data.detail === 'string'
+              ? data.detail
+              : Object.keys(data).length
+                ? JSON.stringify(data)
+                : null
+        }
+      } catch {
+        // ignore parse issues; fall back to generic message
+      }
       message.error(serverMsg || e?.message || 'PDF download failed. Please try again.')
     }
   }
@@ -633,7 +660,10 @@ export function ReportsPage() {
             </Button>
             <Button
               type="button"
-              disabled={!submitted?.reportId || submitted?.reportId !== 'cash_flow'}
+              disabled={
+                !submitted?.reportId ||
+                !['cash_flow', 'property_income'].includes(submitted.reportId)
+              }
               onClick={downloadPdf}
             >
               Download PDF

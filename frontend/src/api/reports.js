@@ -2,6 +2,7 @@ import { api } from './client'
 
 const PATHS = {
   property_income: '/api/reports/property-income/',
+  property_income_pdf: '/api/reports/property-income/pdf/',
   contracts: '/api/reports/contracts/',
   tenant_payments: '/api/reports/tenant-payments/',
   outstanding_balances: '/api/reports/outstanding-balances/',
@@ -39,6 +40,26 @@ export async function fetchReport(reportId, params = {}) {
 
 export async function downloadCashFlowPdf(params = {}) {
   const res = await api.get(PATHS.cash_flow_pdf, {
+    params: omitEmpty(params),
+    responseType: 'blob',
+  })
+  const blob = res.data
+  if (!(blob instanceof Blob) || blob.size === 0) {
+    throw new Error('Empty PDF response')
+  }
+  const head = new Uint8Array(await blob.slice(0, 5).arrayBuffer())
+  const sig = String.fromCharCode(...head)
+  if (!sig.startsWith('%PDF')) {
+    const text = await blob.text()
+    throw new Error(
+      (text && text.slice(0, 400)) || 'Server did not return a PDF file',
+    )
+  }
+  return blob
+}
+
+export async function downloadPropertyIncomePdf(params = {}) {
+  const res = await api.get(PATHS.property_income_pdf, {
     params: omitEmpty(params),
     responseType: 'blob',
   })
