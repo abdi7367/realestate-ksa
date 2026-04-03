@@ -56,15 +56,24 @@ def _parse_date_range(request):
     today = date.today()
     df_raw = request.query_params.get('date_from')
     dt_raw = request.query_params.get('date_to')
-    if df_raw:
-        date_from = date.fromisoformat(df_raw)
-    else:
+    try:
+        date_from = date.fromisoformat(df_raw) if df_raw else today - timedelta(days=365)
+    except ValueError:
         date_from = today - timedelta(days=365)
-    if dt_raw:
-        date_to = date.fromisoformat(dt_raw)
-    else:
+    try:
+        date_to = date.fromisoformat(dt_raw) if dt_raw else today
+    except ValueError:
         date_to = today
     return date_from, date_to
+
+
+def _safe_limit(request, default: int = 500, maximum: int = 2000) -> int:
+    """Parse an optional ``limit`` query-param, clamping to *maximum*."""
+    raw = request.query_params.get('limit', '')
+    try:
+        return min(int(raw), maximum) if raw else default
+    except (ValueError, TypeError):
+        return default
 
 
 class PropertyIncomeReportView(APIView):
@@ -215,7 +224,7 @@ class ContractReportView(APIView):
             qs = qs.filter(status=st)
         if df := request.query_params.get('date_from'):
             qs = qs.filter(start_date__gte=df)
-        limit = min(int(request.query_params.get('limit', 500)), 2000)
+        limit = _safe_limit(request)
         rows = []
         for c in qs[:limit]:
             tenant = c.tenant
@@ -257,7 +266,7 @@ class TenantPaymentReportView(APIView):
             qs = qs.filter(contract__tenant_id=tid)
         if pid := request.query_params.get('property_id'):
             qs = qs.filter(contract__unit__property_id=pid)
-        limit = min(int(request.query_params.get('limit', 500)), 2000)
+        limit = _safe_limit(request)
         rows = []
         for p in qs.order_by('-payment_date')[:limit]:
             c = p.contract
@@ -385,7 +394,7 @@ class VoucherReportView(APIView):
             qs = qs.filter(approval_status=st)
         if pid := request.query_params.get('property_id'):
             qs = qs.filter(property_id=pid)
-        limit = min(int(request.query_params.get('limit', 500)), 2000)
+        limit = _safe_limit(request)
         rows = []
         for v in qs.order_by('-date')[:limit]:
             rows.append({
