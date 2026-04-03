@@ -116,12 +116,13 @@ class ContractViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Reuse existing tenant by national ID to avoid duplicate tenant records.
-        tenant, created = Tenant.objects.get_or_create(
+        tenant = Tenant.objects.filter(
             national_id=tenant_data['national_id'],
-            defaults=tenant_data,
-        )
-        if not created:
+        ).first()
+        created = tenant is None
+        if created:
+            tenant = Tenant.objects.create(**tenant_data)
+        else:
             dirty = False
             for field in ('full_name', 'phone', 'email', 'nationality', 'date_of_birth'):
                 incoming = tenant_data.get(field)
