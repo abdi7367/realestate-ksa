@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Button,
@@ -44,6 +45,7 @@ const EXPENSE_CATS = [
 ]
 
 export function FinancePage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [page, setPage] = useState(1)
@@ -136,30 +138,29 @@ export function FinancePage() {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Typography.Title level={4} style={{ margin: 0 }}>
-        Finance
+        {t('finance.title')}
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
-        Income and expense transactions by property. Categories must match the
-        transaction type (validated by the API).
+        {t('finance.subtitle')}
       </Typography.Paragraph>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
-          <Card size="small" title="Income (filtered)">
+          <Card size="small" title={t('finance.income')}>
             <Typography.Text strong>
               {summaryData?.income != null ? String(summaryData.income) : '—'} SAR
             </Typography.Text>
           </Card>
         </Col>
         <Col xs={24} md={8}>
-          <Card size="small" title="Expense (filtered)">
+          <Card size="small" title={t('finance.expense')}>
             <Typography.Text strong>
               {summaryData?.expense != null ? String(summaryData.expense) : '—'} SAR
             </Typography.Text>
           </Card>
         </Col>
         <Col xs={24} md={8}>
-          <Card size="small" title="Net (income − expense)">
+          <Card size="small" title={t('finance.net')}>
             <Typography.Text strong>
               {summaryData?.profit != null ? String(summaryData.profit) : '—'} SAR
             </Typography.Text>
@@ -171,7 +172,7 @@ export function FinancePage() {
         <Space wrap align="center">
           <Select
             allowClear
-            placeholder="Property (filters list + summary)"
+            placeholder={t('finance.propertyPlaceholder')}
             style={{ minWidth: 220 }}
             options={propertyOptions}
             value={propertyId}
@@ -182,7 +183,7 @@ export function FinancePage() {
           />
           <Select
             allowClear
-            placeholder="Type"
+            placeholder={t('common.type')}
             style={{ width: 120 }}
             options={TX_TYPES}
             value={txType}
@@ -193,7 +194,7 @@ export function FinancePage() {
           />
           <Select
             allowClear
-            placeholder="Category"
+            placeholder={t('finance.category')}
             style={{ minWidth: 160 }}
             options={[...INCOME_CATS, ...EXPENSE_CATS]}
             value={category}
@@ -204,7 +205,7 @@ export function FinancePage() {
           />
           <Input.Search
             allowClear
-            placeholder="Search description / reference"
+            placeholder={t('finance.searchPlaceholder')}
             style={{ width: 240 }}
             onSearch={(v) => {
               setSearch(v)
@@ -221,7 +222,7 @@ export function FinancePage() {
           />
           {canWrite && (
             <Button type="primary" onClick={() => setCreateOpen(true)}>
-              Add transaction
+              {t('finance.addTransaction')}
             </Button>
           )}
         </Space>
@@ -243,31 +244,33 @@ export function FinancePage() {
           onChange: (p) => setPage(p),
         }}
         columns={[
-          { title: 'ID', dataIndex: 'id', width: 70 },
+          { title: t('common.id'), dataIndex: 'id', width: 70 },
           {
-            title: 'Property',
+            title: t('common.property'),
             key: 'prop',
             render: (_, row) => propertyNameById.get(row.property) ?? row.property,
           },
           {
-            title: 'Type',
+            title: t('common.type'),
             dataIndex: 'transaction_type',
-            render: (t) => <Tag color={t === 'income' ? 'green' : 'orange'}>{t}</Tag>,
+            render: (tx) => (
+              <Tag color={tx === 'income' ? 'green' : 'orange'}>{tx}</Tag>
+            ),
           },
-          { title: 'Category', dataIndex: 'category' },
+          { title: t('finance.category'), dataIndex: 'category' },
           {
-            title: 'Amount',
+            title: t('common.amount'),
             dataIndex: 'amount',
             render: (v) => String(v ?? '—'),
           },
-          { title: 'Date', dataIndex: 'date' },
-          { title: 'Description', dataIndex: 'description', ellipsis: true },
-          { title: 'Reference', dataIndex: 'reference', ellipsis: true },
+          { title: t('common.date'), dataIndex: 'date' },
+          { title: t('common.description'), dataIndex: 'description', ellipsis: true },
+          { title: t('common.reference'), dataIndex: 'reference', ellipsis: true },
         ]}
       />
 
       <Modal
-        title="New transaction"
+        title={t('finance.newTransaction')}
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
@@ -281,15 +284,15 @@ export function FinancePage() {
         >
           <Form.Item
             name="property"
-            label="Property"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.property')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Select options={propertyOptions} showSearch optionFilterProp="label" />
           </Form.Item>
           <Form.Item
             name="transaction_type"
-            label="Type"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.type')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Select
               options={TX_TYPES}
@@ -303,8 +306,8 @@ export function FinancePage() {
             {() => (
               <Form.Item
                 name="category"
-                label="Category"
-                rules={[{ required: true, message: 'Required' }]}
+                label={t('finance.category')}
+                rules={[{ required: true, message: t('common.required') }]}
               >
                 <Select
                   options={
@@ -318,27 +321,27 @@ export function FinancePage() {
           </Form.Item>
           <Form.Item
             name="amount"
-            label="Amount (SAR)"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.amountSAR')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <InputNumber min={0} step={100} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="date"
-            label="Date"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.date')}
+            rules={[{ required: true, message: t('common.required') }]}
             initialValue={dayjs()}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Form.Item name="reference" label="Reference">
+          <Form.Item name="reference" label={t('common.reference')}>
             <Input />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={createTx.isPending}>
-            Save
+            {t('common.save')}
           </Button>
         </Form>
       </Modal>
