@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Button,
@@ -18,13 +19,6 @@ import dayjs from 'dayjs'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
-const PAYMENT_METHODS = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'bank_transfer', label: 'Bank transfer' },
-  { value: 'cheque', label: 'Cheque' },
-  { value: 'online', label: 'Online' },
-]
-
 const STATUS_COLORS = {
   draft: 'default',
   pending_accountant: 'blue',
@@ -35,6 +29,7 @@ const STATUS_COLORS = {
 }
 
 export function VouchersPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [page, setPage] = useState(1)
@@ -44,6 +39,28 @@ export function VouchersPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [rejectState, setRejectState] = useState({ open: false, voucherId: null, reason: '' })
   const [form] = Form.useForm()
+
+  const paymentMethodOptions = useMemo(
+    () => [
+      { value: 'cash', label: t('vouchers.methods.cash') },
+      { value: 'bank_transfer', label: t('vouchers.methods.bank_transfer') },
+      { value: 'cheque', label: t('vouchers.methods.cheque') },
+      { value: 'online', label: t('vouchers.methods.online') },
+    ],
+    [t],
+  )
+
+  const voucherStatusFilterOptions = useMemo(
+    () => [
+      { value: 'draft', label: t('vouchers.statuses.draft') },
+      { value: 'pending_accountant', label: t('vouchers.statuses.pending_accountant') },
+      { value: 'pending_finance', label: t('vouchers.statuses.pending_finance') },
+      { value: 'pending_admin', label: t('vouchers.statuses.pending_admin') },
+      { value: 'approved', label: t('vouchers.statuses.approved') },
+      { value: 'rejected', label: t('vouchers.statuses.rejected') },
+    ],
+    [t],
+  )
 
   const role = user?.role
   const canCreate = ['admin', 'accountant'].includes(role)
@@ -141,19 +158,17 @@ export function VouchersPage() {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Typography.Title level={4} style={{ margin: 0 }}>
-        Vouchers
+        {t('vouchers.title')}
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
-        Payment vouchers: draft → accountant → finance manager → admin approval.
-        Use <strong>Advance</strong> to move one step (role must match the current stage,
-        unless you are admin).
+        {t('vouchers.subtitle')}
       </Typography.Paragraph>
 
       <Card size="small">
         <Space wrap align="center">
           <Select
             allowClear
-            placeholder="Property"
+            placeholder={t('common.property')}
             style={{ minWidth: 200 }}
             options={propertyOptions}
             value={propertyId}
@@ -164,16 +179,9 @@ export function VouchersPage() {
           />
           <Select
             allowClear
-            placeholder="Status"
+            placeholder={t('common.status')}
             style={{ minWidth: 200 }}
-            options={[
-              { value: 'draft', label: 'Draft' },
-              { value: 'pending_accountant', label: 'Pending accountant' },
-              { value: 'pending_finance', label: 'Pending finance' },
-              { value: 'pending_admin', label: 'Pending admin' },
-              { value: 'approved', label: 'Approved' },
-              { value: 'rejected', label: 'Rejected' },
-            ]}
+            options={voucherStatusFilterOptions}
             value={status}
             onChange={(v) => {
               setStatus(v)
@@ -182,7 +190,7 @@ export function VouchersPage() {
           />
           <Input.Search
             allowClear
-            placeholder="Search number, payee, description"
+            placeholder={t('common.search')}
             style={{ width: 280 }}
             onSearch={(v) => {
               setSearch(v)
@@ -191,7 +199,7 @@ export function VouchersPage() {
           />
           {canCreate && (
             <Button type="primary" onClick={() => setCreateOpen(true)}>
-              New voucher
+              {t('vouchers.newVoucher')}
             </Button>
           )}
         </Space>
@@ -213,29 +221,29 @@ export function VouchersPage() {
           onChange: (p) => setPage(p),
         }}
         columns={[
-          { title: 'No.', dataIndex: 'voucher_number', width: 130 },
+          { title: t('vouchers.number'), dataIndex: 'voucher_number', width: 130 },
           {
-            title: 'Property',
+            title: t('common.property'),
             key: 'prop',
             render: (_, row) => propertyNameById.get(row.property) ?? row.property,
           },
-          { title: 'Date', dataIndex: 'date' },
+          { title: t('common.date'), dataIndex: 'date' },
           {
-            title: 'Amount',
+            title: t('common.amount'),
             dataIndex: 'amount',
             render: (v) => String(v ?? '—'),
           },
-          { title: 'Payee', dataIndex: 'payee_name', ellipsis: true },
-          { title: 'Method', dataIndex: 'payment_method' },
+          { title: t('vouchers.payee'), dataIndex: 'payee_name', ellipsis: true },
+          { title: t('contracts.method'), dataIndex: 'payment_method' },
           {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'approval_status',
             render: (s) => (
               <Tag color={STATUS_COLORS[s] || 'default'}>{s?.replace(/_/g, ' ')}</Tag>
             ),
           },
           {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'act',
             width: 200,
             render: (_, row) => (
@@ -249,7 +257,7 @@ export function VouchersPage() {
                       loading={approveMut.isPending}
                       onClick={() => approveMut.mutate(row.id)}
                     >
-                      Advance
+                      {t('vouchers.advance')}
                     </Button>
                   )}
                 {canAdvance &&
@@ -261,7 +269,7 @@ export function VouchersPage() {
                       loading={rejectMut.isPending}
                       onClick={() => openRejectModal(row.id)}
                     >
-                      Reject
+                      {t('vouchers.reject')}
                     </Button>
                   )}
               </Space>
@@ -271,29 +279,29 @@ export function VouchersPage() {
       />
 
       <Modal
-        title="Reject voucher"
+        title={t('vouchers.rejectModal.title')}
         open={rejectState.open}
         onCancel={closeRejectModal}
         onOk={submitReject}
-        okText="Reject voucher"
+        okText={t('vouchers.rejectModal.okText')}
         okButtonProps={{ danger: true, loading: rejectMut.isPending }}
       >
         <Form layout="vertical">
-          <Form.Item label="Reason (optional)">
+          <Form.Item label={t('vouchers.rejectModal.reason')}>
             <Input.TextArea
               rows={4}
               value={rejectState.reason}
               onChange={(e) =>
                 setRejectState((prev) => ({ ...prev, reason: e.target.value }))
               }
-              placeholder="Add context for rejection"
+              placeholder={t('vouchers.rejectModal.placeholder')}
             />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title="New voucher"
+        title={t('vouchers.createModal.title')}
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
@@ -302,56 +310,56 @@ export function VouchersPage() {
         <Form form={form} layout="vertical" onFinish={onCreate}>
           <Form.Item
             name="voucher_number"
-            label="Voucher number (unique)"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('vouchers.createModal.voucherNumber')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <Input placeholder="e.g. V-2026-0001" />
+            <Input placeholder={t('vouchers.createModal.voucherNumberPlaceholder')} />
           </Form.Item>
           <Form.Item
             name="property"
-            label="Property"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.property')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Select options={propertyOptions} showSearch optionFilterProp="label" />
           </Form.Item>
           <Form.Item
             name="date"
-            label="Date"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('vouchers.createModal.date')}
+            rules={[{ required: true, message: t('common.required') }]}
             initialValue={dayjs()}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="amount"
-            label="Amount (SAR)"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('vouchers.createModal.amount')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <InputNumber min={0} step={100} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="payee_name"
-            label="Payee"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('vouchers.createModal.payee')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="payment_method"
-            label="Payment method"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('vouchers.createModal.paymentMethod')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <Select options={PAYMENT_METHODS} />
+            <Select options={paymentMethodOptions} />
           </Form.Item>
           <Form.Item
             name="description"
-            label="Description"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('vouchers.createModal.description')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Input.TextArea rows={4} />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={createVoucher.isPending}>
-            Create draft
+            {t('vouchers.createModal.createDraft')}
           </Button>
         </Form>
       </Modal>
