@@ -258,3 +258,33 @@ class TenantReadAPITests(APITestCase):
         self.assertGreaterEqual(r.data.get('count', 0), 1)
         names = [item['full_name'] for item in r.data.get('results', [])]
         self.assertIn('Noura Salem', names)
+
+
+class ContractCreateDuplicateTenantTests(APITestCase):
+    """Regression: duplicate national_id rows must not crash contract creation."""
+
+    def setUp(self):
+        self.pm = User.objects.create_user(
+            username='dup_pm',
+            password='testpass123',
+            role='property_manager',
+        )
+        _, self.unit = _property_and_vacant_unit()
+        Tenant.objects.create(full_name='Dup A', national_id='DUPDUP001')
+        Tenant.objects.create(full_name='Dup B', national_id='DUPDUP001')
+
+    def test_create_contract_survives_duplicate_national_id(self):
+        self.client.force_authenticate(user=self.pm)
+        payload = {
+            'unit': self.unit.id,
+            'tenant_data': {
+                'full_name': 'Dup A Updated',
+                'national_id': 'DUPDUP001',
+            },
+            'monthly_rent': '3000.00',
+            'start_date': '2026-06-01',
+            'duration_months': 12,
+        }
+        r = self.client.post('/api/contracts/', payload, format='json')
+        self.assertIn(r.status_code, (200, 201), r.content)
+        self.assertEqual(Tenant.objects.filter(national_id='DUPDUP001').count(), 2)
