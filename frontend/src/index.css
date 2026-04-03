@@ -59,6 +59,75 @@ body {
   font-family: 'Noto Sans Arabic', 'Segoe UI', system-ui, sans-serif;
 }
 
+/* ── Global RTL layout helpers ─────────────────────────────────────── */
+[dir='rtl'] .ant-layout {
+  direction: rtl;
+}
+
+[dir='rtl'] .ant-space {
+  direction: rtl;
+}
+
+[dir='rtl'] .ant-table-cell {
+  text-align: start;
+}
+
+[dir='rtl'] .ant-form-item-label > label {
+  direction: rtl;
+}
+
+[dir='rtl'] .ant-card-head-title {
+  text-align: start;
+}
+
+[dir='rtl'] .ant-statistic-title {
+  text-align: start;
+}
+
+[dir='rtl'] .ant-statistic-content {
+  text-align: start;
+}
+
+[dir='rtl'] .ant-descriptions-item-label {
+  text-align: start;
+}
+
+[dir='rtl'] .ant-modal-title {
+  text-align: start;
+}
+
+[dir='rtl'] .ant-typography {
+  text-align: start;
+}
+
+/* Sidebar menu text alignment for RTL */
+[dir='rtl'] .ant-menu-item,
+[dir='rtl'] .ant-menu-title-content {
+  text-align: right;
+}
+
+/* Ensure tag and badge text stays readable */
+[dir='rtl'] .ant-tag {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Table scroll container should not clip in RTL */
+[dir='rtl'] .ant-table-content {
+  overflow-x: auto;
+}
+
+/* Input icons (search, clear) position correctly */
+[dir='rtl'] .ant-input-search .ant-input-suffix {
+  direction: ltr;
+}
+
+/* Debts expanded row padding fix for RTL */
+[dir='rtl'] .debt-installments-panel {
+  padding-inline-start: 24px;
+  padding-inline-end: 0;
+}
+
 /* Dashboard */
 .dashboard-page {
   max-width: 1200px;
@@ -353,7 +422,7 @@ body {
   width: 100%;
   max-width: 100%;
   margin: 0;
-  text-align: left;
+  text-align: start;
   border: none;
   min-height: 100svh;
   display: flex;

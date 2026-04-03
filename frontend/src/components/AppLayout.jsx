@@ -81,7 +81,13 @@ export function AppLayout() {
         flexDirection: isRtl ? 'row-reverse' : 'row',
       }}
     >
-      <Sider breakpoint="lg" collapsedWidth="0" theme="dark" width={230}>
+      <Sider
+        breakpoint="lg"
+        collapsedWidth="0"
+        theme="dark"
+        width={230}
+        style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'auto' }}
+      >
         <div
           style={{
             padding: '18px 14px',
@@ -91,6 +97,7 @@ export function AppLayout() {
             letterSpacing: isRtl ? '0' : '0.02em',
             textAlign: isRtl ? 'right' : 'left',
             lineHeight: 1.35,
+            fontFamily: isRtl ? "'Noto Sans Arabic', system-ui, sans-serif" : undefined,
           }}
         >
           {t('brand')}
@@ -152,9 +159,9 @@ export function AppLayout() {
         <Content
           style={{
             margin: '16px 24px 24px',
-            width: '100%',
             maxWidth: '100%',
             boxSizing: 'border-box',
+            overflow: 'hidden',
           }}
         >
           <Outlet />
