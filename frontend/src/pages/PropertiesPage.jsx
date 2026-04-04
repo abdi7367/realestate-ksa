@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Button,
@@ -24,25 +25,22 @@ import { PlusOutlined, HomeOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useLocalizedDigits } from '../hooks/useLocalizedDigits'
+import { arabicInputNumberProps } from '../utils/arabicNumerals'
 
-const PROPERTY_TYPES = [
-  { value: 'residential', label: 'Residential' },
-  { value: 'commercial', label: 'Commercial' },
-  { value: 'industrial', label: 'Industrial' },
-  { value: 'land', label: 'Land' },
-]
-
-function typeTagColor(t) {
+function typeTagColor(propertyType) {
   const map = {
     residential: 'green',
     commercial: 'blue',
     industrial: 'orange',
     land: 'default',
   }
-  return map[t] || 'default'
+  return map[propertyType] || 'default'
 }
 
 export function PropertiesPage() {
+  const { t } = useTranslation()
+  const { isArabic, localizeDigits } = useLocalizedDigits()
   const { token } = theme.useToken()
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -52,6 +50,16 @@ export function PropertiesPage() {
   const [form] = Form.useForm()
 
   const canManage = ['admin', 'property_manager'].includes(user?.role)
+
+  const propertyTypeOptions = useMemo(
+    () => [
+      { value: 'residential', label: t('properties.types.residential') },
+      { value: 'commercial', label: t('properties.types.commercial') },
+      { value: 'industrial', label: t('properties.types.industrial') },
+      { value: 'land', label: t('properties.types.land') },
+    ],
+    [t],
+  )
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['properties', page],
@@ -98,6 +106,128 @@ export function PropertiesPage() {
     createError?.detail ||
     (createError && JSON.stringify(createError))
 
+  const columns = useMemo(
+    () => [
+      {
+        title: '',
+        key: 'owner_btn',
+        width: 56,
+        align: 'center',
+        fixed: 'left',
+        render: (_, row) => (
+          <Tooltip title={t('properties.ownerDetails')}>
+            <Button
+              type="primary"
+              shape="circle"
+              size="small"
+              icon={<PlusOutlined />}
+              aria-label={t('properties.ownerDetailsAria')}
+              onClick={() => setOwnerModalProperty(row)}
+            />
+          </Tooltip>
+        ),
+      },
+      {
+        title: t('properties.ownerId'),
+        dataIndex: 'owner_reference',
+        key: 'owner_ref',
+        width: 100,
+        ellipsis: true,
+        render: (v) => (v ? localizeDigits(v) : '—'),
+      },
+      {
+        title: t('properties.code'),
+        dataIndex: 'property_code',
+        key: 'property_code',
+        width: 100,
+        render: (v) => (v ? localizeDigits(v) : '—'),
+      },
+      {
+        title: t('properties.name'),
+        dataIndex: 'name',
+        key: 'name',
+        ellipsis: true,
+        render: (text, row) => (
+          <span>
+            <Typography.Text strong>
+              <Link
+                to={`/properties/${row.id}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                }}
+              >
+                {text}
+              </Link>
+            </Typography.Text>
+            {row.owner_full_name ? (
+              <Typography.Text
+                type="secondary"
+                style={{ display: 'block', fontSize: 12 }}
+              >
+                {row.owner_full_name}
+              </Typography.Text>
+            ) : null}
+          </span>
+        ),
+      },
+      {
+        title: t('properties.type'),
+        dataIndex: 'property_type',
+        key: 'property_type',
+        width: 130,
+        render: (typeVal) => (
+          <Tag color={typeTagColor(typeVal)}>
+            {typeVal
+              ? t(`properties.types.${typeVal}`, {
+                  defaultValue: String(typeVal).replace(/_/g, ' '),
+                })
+              : ''}
+          </Tag>
+        ),
+      },
+      { title: t('properties.city'), dataIndex: 'city', key: 'city', width: 110 },
+      {
+        title: t('properties.district'),
+        dataIndex: 'district',
+        key: 'district',
+        width: 120,
+      },
+      {
+        title: t('properties.location'),
+        dataIndex: 'location',
+        key: 'location',
+        ellipsis: true,
+        render: (v) => v || '—',
+      },
+      {
+        title: t('properties.units'),
+        dataIndex: 'num_units',
+        key: 'num_units',
+        width: 72,
+        align: 'center',
+        render: (v) => localizeDigits(v ?? '—'),
+      },
+      {
+        title: t('properties.vacantOcc'),
+        key: 'occ',
+        width: 120,
+        align: 'center',
+        render: (_, row) => (
+          <Typography.Text type="secondary">
+            <Typography.Text type="success">
+              {localizeDigits(String(row.vacant_units ?? 0))}
+            </Typography.Text>
+            {' / '}
+            <Typography.Text>
+              {localizeDigits(String(row.occupied_units ?? 0))}
+            </Typography.Text>
+          </Typography.Text>
+        ),
+      },
+    ],
+    [t, localizeDigits],
+  )
+
   const onCreate = (v) => {
     const body = {
       name: v.name,
@@ -121,109 +251,6 @@ export function PropertiesPage() {
     body.owner_address = v.owner_address || ''
     createMutation.mutate(body)
   }
-
-  const columns = [
-    {
-      title: '',
-      key: 'owner_btn',
-      width: 56,
-      align: 'center',
-      fixed: 'left',
-      render: (_, row) => (
-        <Tooltip title="Registered owner details">
-          <Button
-            type="primary"
-            shape="circle"
-            size="small"
-            icon={<PlusOutlined />}
-            aria-label="Show owner details"
-            onClick={() => setOwnerModalProperty(row)}
-          />
-        </Tooltip>
-      ),
-    },
-    {
-      title: 'Owner ID',
-      dataIndex: 'owner_reference',
-      key: 'owner_ref',
-      width: 100,
-      ellipsis: true,
-      render: (v) => v || '—',
-    },
-    {
-      title: 'Code',
-      dataIndex: 'property_code',
-      key: 'property_code',
-      width: 100,
-      render: (v) => v || '—',
-    },
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-      ellipsis: true,
-      render: (text, row) => (
-        <span>
-          <Typography.Text strong>
-            <Link
-              to={`/properties/${row.id}`}
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
-            >
-              {text}
-            </Link>
-          </Typography.Text>
-          {row.owner_full_name ? (
-            <Typography.Text
-              type="secondary"
-              style={{ display: 'block', fontSize: 12 }}
-            >
-              {row.owner_full_name}
-            </Typography.Text>
-          ) : null}
-        </span>
-      ),
-    },
-    {
-      title: 'Type',
-      dataIndex: 'property_type',
-      key: 'property_type',
-      width: 130,
-      render: (t) => (
-        <Tag color={typeTagColor(t)}>{String(t || '').replace(/_/g, ' ')}</Tag>
-      ),
-    },
-    { title: 'City', dataIndex: 'city', key: 'city', width: 110 },
-    { title: 'District', dataIndex: 'district', key: 'district', width: 120 },
-    {
-      title: 'Location',
-      dataIndex: 'location',
-      key: 'location',
-      ellipsis: true,
-      render: (v) => v || '—',
-    },
-    {
-      title: 'Units',
-      dataIndex: 'num_units',
-      key: 'num_units',
-      width: 72,
-      align: 'center',
-    },
-    {
-      title: 'Vacant / Occ.',
-      key: 'occ',
-      width: 120,
-      align: 'center',
-      render: (_, row) => (
-        <Typography.Text type="secondary">
-          <Typography.Text type="success">{row.vacant_units ?? 0}</Typography.Text>
-          {' / '}
-          <Typography.Text>{row.occupied_units ?? 0}</Typography.Text>
-        </Typography.Text>
-      ),
-    },
-  ]
 
   const openAddModal = () => {
     createMutation.reset()
@@ -261,14 +288,13 @@ export function PropertiesPage() {
             </div>
             <div style={{ paddingRight: 8 }}>
               <Typography.Title level={3} style={{ margin: 0 }}>
-                Properties
+                {t('properties.title')}
               </Typography.Title>
               <Typography.Paragraph
                 type="secondary"
                 style={{ margin: '4px 0 0', maxWidth: 560, marginBottom: 0 }}
               >
-                Register and track buildings across KSA: type, location, unit
-                counts, and occupancy at a glance.
+                {t('properties.subtitle')}
               </Typography.Paragraph>
             </div>
           </Space>
@@ -281,23 +307,23 @@ export function PropertiesPage() {
               icon={<PlusOutlined />}
               onClick={openAddModal}
             >
-              Add property
+              {t('properties.addProperty')}
             </Button>
           ) : null
         }
       >
         {isError ? (
           <Typography.Text type="danger">
-            {error?.message || 'Could not load properties'}
+            {error?.message || t('properties.loadError')}
           </Typography.Text>
         ) : rows.length === 0 && !isLoading ? (
           <Empty
-            description="No properties yet"
+            description={t('properties.noProperties')}
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           >
             {canManage && (
               <Button type="primary" onClick={() => setAddOpen(true)}>
-                Add your first property
+                {t('properties.addFirst')}
               </Button>
             )}
           </Empty>
@@ -315,7 +341,8 @@ export function PropertiesPage() {
                     total: data.count,
                     showSizeChanger: false,
                     onChange: (p) => setPage(p),
-                    showTotal: (total) => `${total} properties`,
+                    showTotal: (total) =>
+                      localizeDigits(t('properties.paginationTotal', { count: total })),
                   }
                 : false
             }
@@ -326,7 +353,7 @@ export function PropertiesPage() {
       </Card>
 
       <Modal
-        title="Add property"
+        title={t('properties.addModal.title')}
         open={addOpen}
         onCancel={() => {
           setAddOpen(false)
@@ -351,100 +378,118 @@ export function PropertiesPage() {
             <Col xs={24} sm={12}>
               <Form.Item
                 name="property_code"
-                label="Property code (optional)"
-                tooltip="Unique business ID if you use one"
+                label={t('properties.addModal.propertyCode')}
+                tooltip={t('properties.addModal.propertyCodeHelp')}
               >
-                <Input placeholder="e.g. OLAYA-001" allowClear />
+                <Input placeholder={t('properties.addModal.phCode')} allowClear />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="property_type"
-                label="Type"
-                rules={[{ required: true, message: 'Select type' }]}
+                label={t('properties.type')}
+                rules={[
+                  { required: true, message: t('properties.addModal.ruleSelectType') },
+                ]}
               >
-                <Select options={PROPERTY_TYPES} />
+                <Select options={propertyTypeOptions} />
               </Form.Item>
             </Col>
           </Row>
           <Form.Item
             name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Enter property name' }]}
+            label={t('properties.addModal.name')}
+            rules={[{ required: true, message: t('properties.addModal.ruleName') }]}
           >
-            <Input placeholder="Building or complex name" />
+            <Input placeholder={t('properties.addModal.phName')} />
           </Form.Item>
           <Row gutter={16}>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="city"
-                label="City"
-                rules={[{ required: true, message: 'Enter city' }]}
+                label={t('properties.addModal.city')}
+                rules={[{ required: true, message: t('properties.addModal.ruleCity') }]}
               >
-                <Input placeholder="Riyadh" />
+                <Input placeholder={t('properties.addModal.phCity')} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="district"
-                label="District"
-                rules={[{ required: true, message: 'Enter district' }]}
+                label={t('properties.addModal.district')}
+                rules={[
+                  { required: true, message: t('properties.addModal.ruleDistrict') },
+                ]}
               >
-                <Input placeholder="Al Olaya" />
+                <Input placeholder={t('properties.addModal.phDistrict')} />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="location" label="Location detail (optional)">
-            <Input placeholder="Street, landmark…" />
+          <Form.Item
+            name="location"
+            label={t('properties.addModal.locationDetail')}
+          >
+            <Input placeholder={t('properties.addModal.phLocation')} />
           </Form.Item>
           <Row gutter={16}>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="size_sqm"
-                label="Size (m²)"
-                rules={[{ required: true, message: 'Enter size' }]}
+                label={t('properties.addModal.sizeSqm')}
+                rules={[{ required: true, message: t('properties.addModal.ruleSize') }]}
               >
                 <InputNumber
                   min={0}
                   step={10}
                   style={{ width: '100%' }}
-                  placeholder="Land / building area"
+                  placeholder={t('properties.addModal.phSize')}
+                  {...arabicInputNumberProps(isArabic)}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="num_units"
-                label="Number of units"
-                rules={[{ required: true, message: 'Enter unit count' }]}
+                label={t('properties.addModal.numUnits')}
+                rules={[
+                  { required: true, message: t('properties.addModal.ruleNumUnits') },
+                ]}
               >
-                <InputNumber min={1} max={10000} style={{ width: '100%' }} />
+                <InputNumber
+                  min={1}
+                  max={10000}
+                  style={{ width: '100%' }}
+                  {...arabicInputNumberProps(isArabic)}
+                />
               </Form.Item>
             </Col>
           </Row>
 
-          <Divider orientation="left">Registered owner (office record)</Divider>
+          <Divider orientation="left">{t('properties.addModal.ownerSection')}</Divider>
           <Typography.Paragraph type="secondary" style={{ marginTop: -8 }}>
-            Owner ID is assigned automatically when the property is saved (e.g.{' '}
-            <Typography.Text code>O-000042</Typography.Text>). Not a system login.
+            {t('properties.addModal.ownerIdNote')}
           </Typography.Paragraph>
           <Row gutter={16}>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="owner_full_name"
-                label="Full name"
-                rules={[{ required: true, message: 'Enter owner name' }]}
+                label={t('properties.addModal.ownerFullName')}
+                rules={[
+                  { required: true, message: t('properties.addModal.ruleOwnerName') },
+                ]}
               >
-                <Input placeholder="Landlord / lessor name" />
+                <Input placeholder={t('properties.addModal.phOwnerName')} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="owner_national_id"
-                label="National ID / Iqama"
-                rules={[{ required: true, message: 'Enter ID' }]}
+                label={t('properties.addModal.ownerNationalId')}
+                rules={[
+                  { required: true, message: t('properties.addModal.ruleOwnerId') },
+                ]}
               >
-                <Input placeholder="10-digit national ID or Iqama" />
+                <Input placeholder={t('properties.addModal.phNationalId')} />
               </Form.Item>
             </Col>
           </Row>
@@ -452,50 +497,61 @@ export function PropertiesPage() {
             <Col xs={24} sm={12}>
               <Form.Item
                 name="owner_phone"
-                label="Phone"
-                rules={[{ required: true, message: 'Enter phone' }]}
+                label={t('properties.addModal.ownerPhone')}
+                rules={[{ required: true, message: t('properties.addModal.rulePhone') }]}
               >
-                <Input placeholder="+966…" />
+                <Input placeholder={t('properties.addModal.phPhone')} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="owner_email"
-                label="Email"
+                label={t('properties.addModal.ownerEmail')}
                 rules={[
-                  { required: true, message: 'Enter email' },
-                  { type: 'email', message: 'Invalid email' },
+                  { required: true, message: t('properties.addModal.ruleEmail') },
+                  { type: 'email', message: t('common.invalidEmail') },
                 ]}
               >
-                <Input type="email" placeholder="owner@example.com" />
+                <Input type="email" placeholder={t('properties.addModal.phEmail')} />
               </Form.Item>
             </Col>
           </Row>
           <Form.Item
             name="owner_bank_iban"
-            label="Bank account / IBAN (rent payouts)"
-            rules={[{ required: true, message: 'Enter IBAN or account' }]}
+            label={t('properties.addModal.ownerIBAN')}
+            rules={[{ required: true, message: t('properties.addModal.ruleIban') }]}
           >
-            <Input placeholder="SA…" />
+            <Input placeholder={t('properties.addModal.phIban')} />
           </Form.Item>
-          <Form.Item name="owner_address" label="Address (optional)">
-            <Input.TextArea rows={2} placeholder="Street, building, optional" />
+          <Form.Item
+            name="owner_address"
+            label={t('properties.addModal.ownerAddress')}
+          >
+            <Input.TextArea
+              rows={2}
+              placeholder={t('properties.addModal.phOwnerAddress')}
+            />
           </Form.Item>
 
-          <Divider orientation="left">Internal</Divider>
-          <Form.Item name="ownership_status" label="Ownership status (optional)">
-            <Input placeholder="e.g. Owned, leased land" />
+          <Divider orientation="left">
+            {t('properties.addModal.internalSection')}
+          </Divider>
+          <Form.Item
+            name="ownership_status"
+            label={t('properties.addModal.ownershipStatus')}
+          >
+            <Input placeholder={t('properties.addModal.phOwnership')} />
           </Form.Item>
           <Form.Item
             name="property_manager_id"
-            label="Property manager (optional)"
-            tooltip="Users with manager / admin roles"
+            label={t('properties.addModal.propertyManager')}
+            tooltip={t('properties.addModal.propertyManagerHelp')}
           >
             <Select
               allowClear
               showSearch
               optionFilterProp="label"
-              placeholder="Assign a manager"
+              placeholder={t('properties.addModal.propertyManagerPlaceholder')}
               options={managerOptions}
             />
           </Form.Item>
@@ -506,9 +562,9 @@ export function PropertiesPage() {
                 htmlType="submit"
                 loading={createMutation.isPending}
               >
-                Create property
+                {t('properties.addModal.createBtn')}
               </Button>
-              <Button onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button onClick={() => setAddOpen(false)}>{t('common.cancel')}</Button>
             </Space>
           </Form.Item>
         </Form>
@@ -519,7 +575,7 @@ export function PropertiesPage() {
           ownerModalProperty ? (
             <Space direction="vertical" size={0}>
               <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                Registered owner
+                {t('properties.registeredOwner')}
               </Typography.Text>
               <Typography.Title level={5} style={{ margin: 0 }}>
                 {ownerModalProperty.name}
@@ -531,7 +587,7 @@ export function PropertiesPage() {
         onCancel={() => setOwnerModalProperty(null)}
         footer={
           <Button type="primary" onClick={() => setOwnerModalProperty(null)}>
-            Close
+            {t('properties.close')}
           </Button>
         }
         width={520}
@@ -539,27 +595,35 @@ export function PropertiesPage() {
       >
         {ownerModalProperty && (
           <Descriptions bordered column={1} size="small">
-            <Descriptions.Item label="Owner ID">
-              {ownerModalProperty.owner_reference || '—'}
+            <Descriptions.Item label={t('properties.ownerId')}>
+              {ownerModalProperty.owner_reference
+                ? localizeDigits(ownerModalProperty.owner_reference)
+                : '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="Full name">
+            <Descriptions.Item label={t('properties.ownerFullName')}>
               {ownerModalProperty.owner_full_name || '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="National ID / Iqama">
-              {ownerModalProperty.owner_national_id || '—'}
+            <Descriptions.Item label={t('properties.ownerNationalId')}>
+              {ownerModalProperty.owner_national_id
+                ? localizeDigits(ownerModalProperty.owner_national_id)
+                : '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="Phone">
-              {ownerModalProperty.owner_phone || '—'}
+            <Descriptions.Item label={t('properties.ownerPhone')}>
+              {ownerModalProperty.owner_phone
+                ? localizeDigits(ownerModalProperty.owner_phone)
+                : '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="Email">
+            <Descriptions.Item label={t('properties.ownerEmail')}>
               {ownerModalProperty.owner_email || '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="Bank / IBAN">
-              {ownerModalProperty.owner_bank_iban || '—'}
+            <Descriptions.Item label={t('properties.ownerIBAN')}>
+              {ownerModalProperty.owner_bank_iban
+                ? localizeDigits(ownerModalProperty.owner_bank_iban)
+                : '—'}
             </Descriptions.Item>
-            <Descriptions.Item label="Address">
+            <Descriptions.Item label={t('properties.ownerAddress')}>
               {ownerModalProperty.owner_address?.trim()
-                ? ownerModalProperty.owner_address
+                ? localizeDigits(ownerModalProperty.owner_address)
                 : '—'}
             </Descriptions.Item>
           </Descriptions>

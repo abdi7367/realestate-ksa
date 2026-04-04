@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Button,
@@ -19,31 +20,13 @@ import {
 import dayjs from 'dayjs'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-
-const TX_TYPES = [
-  { value: 'income', label: 'Income' },
-  { value: 'expense', label: 'Expense' },
-]
-
-const INCOME_CATS = [
-  { value: 'rental', label: 'Rental income' },
-  { value: 'parking', label: 'Parking' },
-  { value: 'service_charge', label: 'Service charge' },
-  { value: 'utility_recovery', label: 'Utility recovery' },
-  { value: 'other', label: 'Other income' },
-]
-
-const EXPENSE_CATS = [
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'utilities', label: 'Utilities' },
-  { value: 'security', label: 'Security' },
-  { value: 'cleaning', label: 'Cleaning' },
-  { value: 'government_fees', label: 'Government fees' },
-  { value: 'management', label: 'Management' },
-  { value: 'other', label: 'Other expense' },
-]
+import { useLocalizedDigits } from '../hooks/useLocalizedDigits'
+import { arabicInputNumberProps } from '../utils/arabicNumerals'
+import { sarDisplay } from '../utils/sarFormat'
 
 export function FinancePage() {
+  const { t } = useTranslation()
+  const { isArabic, localizeDigits } = useLocalizedDigits()
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [page, setPage] = useState(1)
@@ -56,6 +39,62 @@ export function FinancePage() {
   const [form] = Form.useForm()
 
   const canWrite = ['admin', 'property_manager', 'accountant'].includes(user?.role)
+
+  const txTypeOptions = useMemo(
+    () => [
+      { value: 'income', label: t('finance.transactionTypes.income') },
+      { value: 'expense', label: t('finance.transactionTypes.expense') },
+    ],
+    [t],
+  )
+  const txTypeLabelByValue = useMemo(
+    () => Object.fromEntries(txTypeOptions.map((o) => [o.value, o.label])),
+    [txTypeOptions],
+  )
+
+  const incomeCategoryOptions = useMemo(
+    () => [
+      { value: 'rental', label: t('finance.incomeCategories.rental') },
+      { value: 'parking', label: t('finance.incomeCategories.parking') },
+      { value: 'service_charge', label: t('finance.incomeCategories.service_charge') },
+      {
+        value: 'utility_recovery',
+        label: t('finance.incomeCategories.utility_recovery'),
+      },
+      { value: 'other', label: t('finance.incomeCategories.other') },
+    ],
+    [t],
+  )
+  const expenseCategoryOptions = useMemo(
+    () => [
+      { value: 'maintenance', label: t('finance.expenseCategories.maintenance') },
+      { value: 'utilities', label: t('finance.expenseCategories.utilities') },
+      { value: 'security', label: t('finance.expenseCategories.security') },
+      { value: 'cleaning', label: t('finance.expenseCategories.cleaning') },
+      {
+        value: 'government_fees',
+        label: t('finance.expenseCategories.government_fees'),
+      },
+      { value: 'management', label: t('finance.expenseCategories.management') },
+      { value: 'other', label: t('finance.expenseCategories.other') },
+    ],
+    [t],
+  )
+  const allCategoryFilterOptions = useMemo(
+    () => [...incomeCategoryOptions, ...expenseCategoryOptions],
+    [incomeCategoryOptions, expenseCategoryOptions],
+  )
+
+  const categoryLabel = (categoryVal, transactionType) => {
+    if (categoryVal == null || categoryVal === '') return '—'
+    const prefix =
+      transactionType === 'expense'
+        ? 'finance.expenseCategories.'
+        : 'finance.incomeCategories.'
+    return t(`${prefix}${categoryVal}`, {
+      defaultValue: String(categoryVal).replace(/_/g, ' '),
+    })
+  }
 
   const { data: propsData } = useQuery({
     queryKey: ['properties', 'finance-picker'],
@@ -136,32 +175,43 @@ export function FinancePage() {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Typography.Title level={4} style={{ margin: 0 }}>
-        Finance
+        {t('finance.title')}
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
-        Income and expense transactions by property. Categories must match the
-        transaction type (validated by the API).
+        {t('finance.subtitle')}
       </Typography.Paragraph>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
-          <Card size="small" title="Income (filtered)">
+          <Card size="small" title={t('finance.income')}>
             <Typography.Text strong>
-              {summaryData?.income != null ? String(summaryData.income) : '—'} SAR
+              {sarDisplay(
+                summaryData?.income != null ? summaryData.income : null,
+                t('common.currencySAR'),
+                isArabic,
+              )}
             </Typography.Text>
           </Card>
         </Col>
         <Col xs={24} md={8}>
-          <Card size="small" title="Expense (filtered)">
+          <Card size="small" title={t('finance.expense')}>
             <Typography.Text strong>
-              {summaryData?.expense != null ? String(summaryData.expense) : '—'} SAR
+              {sarDisplay(
+                summaryData?.expense != null ? summaryData.expense : null,
+                t('common.currencySAR'),
+                isArabic,
+              )}
             </Typography.Text>
           </Card>
         </Col>
         <Col xs={24} md={8}>
-          <Card size="small" title="Net (income − expense)">
+          <Card size="small" title={t('finance.net')}>
             <Typography.Text strong>
-              {summaryData?.profit != null ? String(summaryData.profit) : '—'} SAR
+              {sarDisplay(
+                summaryData?.profit != null ? summaryData.profit : null,
+                t('common.currencySAR'),
+                isArabic,
+              )}
             </Typography.Text>
           </Card>
         </Col>
@@ -171,7 +221,7 @@ export function FinancePage() {
         <Space wrap align="center">
           <Select
             allowClear
-            placeholder="Property (filters list + summary)"
+            placeholder={t('finance.propertyPlaceholder')}
             style={{ minWidth: 220 }}
             options={propertyOptions}
             value={propertyId}
@@ -182,9 +232,9 @@ export function FinancePage() {
           />
           <Select
             allowClear
-            placeholder="Type"
+            placeholder={t('common.type')}
             style={{ width: 120 }}
-            options={TX_TYPES}
+            options={txTypeOptions}
             value={txType}
             onChange={(v) => {
               setTxType(v)
@@ -193,9 +243,9 @@ export function FinancePage() {
           />
           <Select
             allowClear
-            placeholder="Category"
+            placeholder={t('finance.category')}
             style={{ minWidth: 160 }}
-            options={[...INCOME_CATS, ...EXPENSE_CATS]}
+            options={allCategoryFilterOptions}
             value={category}
             onChange={(v) => {
               setCategory(v)
@@ -204,7 +254,7 @@ export function FinancePage() {
           />
           <Input.Search
             allowClear
-            placeholder="Search description / reference"
+            placeholder={t('finance.searchPlaceholder')}
             style={{ width: 240 }}
             onSearch={(v) => {
               setSearch(v)
@@ -221,7 +271,7 @@ export function FinancePage() {
           />
           {canWrite && (
             <Button type="primary" onClick={() => setCreateOpen(true)}>
-              Add transaction
+              {t('finance.addTransaction')}
             </Button>
           )}
         </Space>
@@ -243,31 +293,56 @@ export function FinancePage() {
           onChange: (p) => setPage(p),
         }}
         columns={[
-          { title: 'ID', dataIndex: 'id', width: 70 },
           {
-            title: 'Property',
+            title: t('common.id'),
+            dataIndex: 'id',
+            width: 70,
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
+          {
+            title: t('common.property'),
             key: 'prop',
-            render: (_, row) => propertyNameById.get(row.property) ?? row.property,
+            render: (_, row) =>
+              localizeDigits(
+                String(propertyNameById.get(row.property) ?? row.property ?? ''),
+              ),
           },
           {
-            title: 'Type',
+            title: t('common.type'),
             dataIndex: 'transaction_type',
-            render: (t) => <Tag color={t === 'income' ? 'green' : 'orange'}>{t}</Tag>,
+            render: (tx) => (
+              <Tag color={tx === 'income' ? 'green' : 'orange'}>
+                {txTypeLabelByValue[tx] ?? tx}
+              </Tag>
+            ),
           },
-          { title: 'Category', dataIndex: 'category' },
           {
-            title: 'Amount',
-            dataIndex: 'amount',
-            render: (v) => String(v ?? '—'),
+            title: t('finance.category'),
+            dataIndex: 'category',
+            render: (cat, row) => categoryLabel(cat, row.transaction_type),
           },
-          { title: 'Date', dataIndex: 'date' },
-          { title: 'Description', dataIndex: 'description', ellipsis: true },
-          { title: 'Reference', dataIndex: 'reference', ellipsis: true },
+          {
+            title: t('common.amount'),
+            dataIndex: 'amount',
+            render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+          },
+          {
+            title: t('common.date'),
+            dataIndex: 'date',
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
+          { title: t('common.description'), dataIndex: 'description', ellipsis: true },
+          {
+            title: t('common.reference'),
+            dataIndex: 'reference',
+            ellipsis: true,
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
         ]}
       />
 
       <Modal
-        title="New transaction"
+        title={t('finance.newTransaction')}
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
@@ -281,18 +356,18 @@ export function FinancePage() {
         >
           <Form.Item
             name="property"
-            label="Property"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.property')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Select options={propertyOptions} showSearch optionFilterProp="label" />
           </Form.Item>
           <Form.Item
             name="transaction_type"
-            label="Type"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.type')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Select
-              options={TX_TYPES}
+              options={txTypeOptions}
               onChange={() => form.setFieldsValue({ category: undefined })}
             />
           </Form.Item>
@@ -303,14 +378,14 @@ export function FinancePage() {
             {() => (
               <Form.Item
                 name="category"
-                label="Category"
-                rules={[{ required: true, message: 'Required' }]}
+                label={t('finance.category')}
+                rules={[{ required: true, message: t('common.required') }]}
               >
                 <Select
                   options={
                     form.getFieldValue('transaction_type') === 'expense'
-                      ? EXPENSE_CATS
-                      : INCOME_CATS
+                      ? expenseCategoryOptions
+                      : incomeCategoryOptions
                   }
                 />
               </Form.Item>
@@ -318,27 +393,32 @@ export function FinancePage() {
           </Form.Item>
           <Form.Item
             name="amount"
-            label="Amount (SAR)"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.amountSAR')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={0} step={100} style={{ width: '100%' }} />
+            <InputNumber
+              min={0}
+              step={100}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
           <Form.Item
             name="date"
-            label="Date"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.date')}
+            rules={[{ required: true, message: t('common.required') }]}
             initialValue={dayjs()}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('common.description')}>
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Form.Item name="reference" label="Reference">
+          <Form.Item name="reference" label={t('common.reference')}>
             <Input />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={createTx.isPending}>
-            Save
+            {t('common.save')}
           </Button>
         </Form>
       </Modal>

@@ -2,15 +2,14 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
-  App as AntApp,
   Button,
   Card,
   Col,
   DatePicker,
   Descriptions,
   Form,
-  Input,
   InputNumber,
+  message,
   Row,
   Select,
   Space,
@@ -32,20 +31,23 @@ import {
   YAxis,
 } from 'recharts'
 import { api } from '../api/client'
+import { REPORT_IDS, fetchReport, downloadCashFlowPdf } from '../api/reports'
+import { useLocalizedDigits } from '../hooks/useLocalizedDigits'
+import { arabicInputNumberProps } from '../utils/arabicNumerals'
 import {
-  REPORT_OPTIONS,
-  fetchReport,
-  downloadCashFlowPdf,
-  downloadPropertyIncomePdf,
-} from '../api/reports'
+  isNumericCellValue,
+  isReportMoneyColumnKey,
+  sarDisplay,
+} from '../utils/sarFormat'
 
 function ReportBidiText({ value }) {
+  const { localizeDigits } = useLocalizedDigits()
   if (value === null || value === undefined || value === '') {
     return <span>—</span>
   }
   return (
     <span dir="auto" className="report-bidi-value">
-      {String(value)}
+      {localizeDigits(String(value))}
     </span>
   )
 }
@@ -108,19 +110,30 @@ function reportPropertyContextItems(data, t) {
   return []
 }
 
-function resultsTableColumns(sampleRow) {
+function resultsTableColumns(sampleRow, currencyLabel, easternArabicDigits = false) {
   if (!sampleRow || typeof sampleRow !== 'object') return []
   return Object.keys(sampleRow).map((key) => ({
     title: key.replace(/_/g, ' '),
     dataIndex: key,
     key,
     ellipsis: true,
-    render: (v) => <ReportBidiText value={v} />,
+    render: (v) => {
+      if (isReportMoneyColumnKey(key) && isNumericCellValue(v)) {
+        return (
+          <span dir="auto" className="report-bidi-value">
+            {sarDisplay(v, currencyLabel, easternArabicDigits)}
+          </span>
+        )
+      }
+      return <ReportBidiText value={v} />
+    },
   }))
 }
 
 function ReportOutput({ data }) {
   const { t } = useTranslation()
+  const { isArabic, localizeDigits } = useLocalizedDigits()
+  const sar = t('common.currencySAR')
   if (!data) return null
 
   if (Array.isArray(data.results) && data.results.length > 0) {
@@ -130,7 +143,7 @@ function ReportOutput({ data }) {
         rowKey={(_, i) => String(i)}
         size="small"
         scroll={{ x: true }}
-        columns={resultsTableColumns(data.results[0])}
+        columns={resultsTableColumns(data.results[0], sar, isArabic)}
         dataSource={data.results}
         pagination={{ pageSize: 25, showSizeChanger: true }}
       />
@@ -184,7 +197,14 @@ function ReportOutput({ data }) {
               title: t('reports.total'),
               dataIndex: 'total',
               key: 'total',
-              render: (v) => <ReportBidiText value={v} />,
+              render: (v) =>
+                isNumericCellValue(v) ? (
+                  <span dir="auto" className="report-bidi-value">
+                    {sarDisplay(v, sar, isArabic)}
+                  </span>
+                ) : (
+                  <ReportBidiText value={v} />
+                ),
             },
           ]}
           dataSource={data.by_category}
@@ -203,7 +223,8 @@ function ReportOutput({ data }) {
       children: (
         <div>
           <Typography.Text type="secondary">
-            {owner.ownership_type} · {owner.properties?.length ?? 0} properties
+            {owner.ownership_type} · {localizeDigits(String(owner.properties?.length ?? 0))}{' '}
+            properties
           </Typography.Text>
           <Table
             className="report-bidi-table"
@@ -263,7 +284,7 @@ function ReportOutput({ data }) {
     children:
       typeof v === 'object' && v !== null ? (
         <span dir="ltr" className="report-bidi-value">
-          {JSON.stringify(v)}
+          {localizeDigits(JSON.stringify(v))}
         </span>
       ) : (
         <ReportBidiText value={v} />
@@ -291,6 +312,8 @@ const CHART_COLORS = ['#0d9488', '#2563eb', '#f59e0b', '#7c3aed', '#ef4444', '#1
 
 function ReportCharts({ reportId, data }) {
   const { t } = useTranslation()
+  const { localizeDigits } = useLocalizedDigits()
+  const sar = t('common.currencySAR')
   if (!data) return null
 
   if (reportId === 'cash_flow') {
@@ -309,7 +332,12 @@ function ReportCharts({ reportId, data }) {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip />
+              <Tooltip
+                formatter={(value, name) => [
+                  localizeDigits(`${value} ${sar}`),
+                  name,
+                ]}
+              />
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {chartData.map((_, idx) => (
                   <Cell key={`cell-${idx}`} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
@@ -334,7 +362,12 @@ function ReportCharts({ reportId, data }) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      localizeDigits(`${value} ${sar}`),
+                      name,
+                    ]}
+                  />
                   <Bar dataKey="total" fill="#2563eb" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -351,7 +384,12 @@ function ReportCharts({ reportId, data }) {
                       <Cell key={`pie-${idx}`} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip
+                    formatter={(value, name) => [
+                      localizeDigits(`${value} ${sar}`),
+                      name,
+                    ]}
+                  />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -362,37 +400,12 @@ function ReportCharts({ reportId, data }) {
     )
   }
 
-  if (reportId === 'debt_repayment' && Array.isArray(data.results)) {
-    const chartData = data.results.map((r) => ({
-      name: r.property_name,
-      paid: toNum(r.paid_amount),
-      remaining: toNum(r.remaining_balance),
-    }))
-    return (
-      <Card size="small" title={t('reports.charts.debtProgress')} style={{ marginBottom: 16 }}>
-        <div className="report-chart-ltr" style={{ height: 320, minHeight: 320, minWidth: 0 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ left: 30, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" width={150} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="paid" stackId="a" fill="#16a34a" />
-              <Bar dataKey="remaining" stackId="a" fill="#f59e0b" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-    )
-  }
-
   return null
 }
 
 export function ReportsPage() {
   const { t, i18n } = useTranslation()
-  const { message } = AntApp.useApp()
+  const { isArabic } = useLocalizedDigits()
   const [form] = Form.useForm()
   const [submitted, setSubmitted] = useState(null)
 
@@ -409,6 +422,15 @@ export function ReportsPage() {
       label: [p.property_code, p.name].filter(Boolean).join(' · ') || p.name,
     }))
   }, [propertiesData])
+
+  const reportOptions = useMemo(
+    () =>
+      REPORT_IDS.map((id) => ({
+        value: id,
+        label: t(`reports.types.${id}`),
+      })),
+    [t],
+  )
 
   const reportId = Form.useWatch('report_id', form)
 
@@ -456,16 +478,10 @@ export function ReportsPage() {
 
   const downloadPdf = async () => {
     if (!submitted?.reportId) return
-    const reportId = submitted.reportId
-    const downloadable = ['cash_flow', 'property_income']
-    if (!downloadable.includes(reportId)) return
+    if (submitted.reportId !== 'cash_flow') return
     try {
       const pdfLang = i18n?.language?.toLowerCase().startsWith('ar') ? 'ar' : 'en'
-      const params = { ...submitted.params, lang: pdfLang }
-      const blob =
-        reportId === 'cash_flow'
-          ? await downloadCashFlowPdf(params)
-          : await downloadPropertyIncomePdf(params)
+      const blob = await downloadCashFlowPdf({ ...submitted.params, lang: pdfLang })
       if (!(blob instanceof Blob) || blob.size === 0) {
         message.error('PDF download failed (empty response). Please refresh and try again.')
         return
@@ -486,8 +502,7 @@ export function ReportsPage() {
           : '')
       const propertyPart = slug ? `${slug}_` : ''
       a.href = url
-      const prefix = reportId === 'cash_flow' ? 'cash-flow' : 'property-income'
-      a.download = `${prefix}_${propertyPart}${df}_to_${dt}.pdf`
+      a.download = `cash-flow_${propertyPart}${df}_to_${dt}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -499,26 +514,12 @@ export function ReportsPage() {
         message.error('Session expired. Please login again, then retry the PDF download.')
         return
       }
-      let serverMsg = null
-      try {
-        const data = e?.response?.data
-        if (typeof data === 'string') {
-          serverMsg = data
-        } else if (data instanceof Blob) {
-          const text = await data.text()
-          serverMsg = text
-        } else if (data && typeof data === 'object') {
-          // DRF commonly returns {detail: "..."} on errors.
-          serverMsg =
-            typeof data.detail === 'string'
-              ? data.detail
-              : Object.keys(data).length
-                ? JSON.stringify(data)
-                : null
-        }
-      } catch {
-        // ignore parse issues; fall back to generic message
-      }
+      const serverMsg =
+        typeof e?.response?.data === 'string'
+          ? e.response.data
+          : e?.response?.data
+            ? JSON.stringify(e.response.data)
+            : null
       message.error(serverMsg || e?.message || 'PDF download failed. Please try again.')
     }
   }
@@ -528,10 +529,6 @@ export function ReportsPage() {
     'income_statement',
     'expenses',
   ].includes(reportId)
-
-  const needsYear = ['property_income', 'property_profitability'].includes(
-    reportId,
-  )
 
   return (
     <Card bordered={false}>
@@ -545,131 +542,93 @@ export function ReportsPage() {
         layout="vertical"
         onFinish={onFinish}
         initialValues={{
-          report_id: 'outstanding_balances',
+          report_id: 'income_statement',
           range: [dayjs().subtract(12, 'month'), dayjs()],
         }}
         style={{ maxWidth: 720 }}
       >
         <Form.Item
           name="report_id"
-          label="Report"
-          rules={[{ required: true, message: 'Choose a report' }]}
+          label={t('reports.reportType')}
+          rules={[{ required: true, message: t('reports.chooseReport') }]}
         >
-          <Select options={REPORT_OPTIONS} showSearch optionFilterProp="label" />
+          <Select options={reportOptions} optionFilterProp="label" />
         </Form.Item>
 
         <Row gutter={16}>
           {needsRange && (
             <Col xs={24} md={12}>
-              <Form.Item name="range" label="Date range">
+              <Form.Item name="range" label={t('reports.dateRange')}>
                 <DatePicker.RangePicker style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           )}
-          {needsYear && (
-            <>
-              <Col xs={24} md={6}>
-                <Form.Item name="year" label="Year (optional)">
-                  <InputNumber min={2000} max={2100} style={{ width: '100%' }} placeholder="e.g. 2026" />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={6}>
-                <Form.Item name="month" label="Month 1–12 (optional)">
-                  <InputNumber min={1} max={12} style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-            </>
-          )}
           <Col xs={24} md={12}>
-            <Form.Item name="property_id" label="Property (optional)">
+            <Form.Item name="property_id" label={t('reports.propertyOptional')}>
               <Select
                 allowClear
                 showSearch
                 optionFilterProp="label"
-                placeholder="All properties"
+                placeholder={t('reports.allProperties')}
                 options={propertyOptions}
               />
             </Form.Item>
           </Col>
-          {reportId === 'contracts' && (
-            <Col xs={24} md={6}>
-              <Form.Item name="status" label="Status">
-                <Select
-                  allowClear
-                  options={[
-                    { value: 'active', label: 'Active' },
-                    { value: 'expired', label: 'Expired' },
-                    { value: 'terminated', label: 'Terminated' },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-          )}
           {reportId === 'vouchers' && (
-            <Col xs={24} md={12}>
-              <Form.Item name="approval_status" label="Approval status">
-                <Select
-                  allowClear
-                  options={[
-                    { value: 'draft', label: 'Draft' },
-                    { value: 'pending_accountant', label: 'Pending accountant' },
-                    { value: 'pending_finance', label: 'Pending finance' },
-                    { value: 'pending_admin', label: 'Pending admin' },
-                    { value: 'approved', label: 'Approved' },
-                    { value: 'rejected', label: 'Rejected' },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-          )}
-        </Row>
-
-        {reportId === 'ownership' && (
-          <Form.Item name="ownership_type" label="Ownership type">
-            <Select
-              allowClear
-              options={[
-                { value: 'personal', label: 'Personal' },
-                { value: 'third_party', label: 'Third party' },
-              ]}
-            />
-          </Form.Item>
-        )}
-
-        {(reportId === 'tenant_payments' || reportId === 'contracts') && (
-          <Row gutter={16}>
-            {reportId === 'tenant_payments' && (
-              <Col xs={24} md={8}>
-                <Form.Item name="tenant_id" label="Tenant user ID">
-                  <Input placeholder="Numeric user id" />
+            <>
+              <Col xs={24} md={12}>
+                <Form.Item name="approval_status" label={t('reports.approvalStatus')}>
+                  <Select
+                    allowClear
+                    options={[
+                      { value: 'draft', label: t('vouchers.statuses.draft') },
+                      {
+                        value: 'pending_accountant',
+                        label: t('vouchers.statuses.pending_accountant'),
+                      },
+                      {
+                        value: 'pending_finance',
+                        label: t('vouchers.statuses.pending_finance'),
+                      },
+                      {
+                        value: 'pending_admin',
+                        label: t('vouchers.statuses.pending_admin'),
+                      },
+                      { value: 'approved', label: t('vouchers.statuses.approved') },
+                      { value: 'rejected', label: t('vouchers.statuses.rejected') },
+                    ]}
+                  />
                 </Form.Item>
               </Col>
-            )}
-            <Col xs={24} md={8}>
-              <Form.Item name="limit" label="Row limit">
-                <InputNumber min={1} max={2000} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-        )}
+              <Col xs={24} md={12}>
+                <Form.Item name="limit" label={t('reports.rowLimit')}>
+                  <InputNumber
+                    min={1}
+                    max={2000}
+                    style={{ width: '100%' }}
+                    placeholder="500"
+                    {...arabicInputNumberProps(isArabic)}
+                  />
+                </Form.Item>
+              </Col>
+            </>
+          )}
+        </Row>
 
         <Form.Item>
           <Space>
             <Button type="primary" htmlType="submit">
-              Run report
+              {t('reports.runReport')}
             </Button>
             <Button
               type="button"
-              disabled={
-                !submitted?.reportId ||
-                !['cash_flow', 'property_income'].includes(submitted.reportId)
-              }
+              disabled={!submitted?.reportId || submitted?.reportId !== 'cash_flow'}
               onClick={downloadPdf}
             >
-              Download PDF
+              {t('reports.downloadPdf')}
             </Button>
             <Button type="button" disabled={!submitted?.reportId} onClick={() => refetch()}>
-              Refresh
+              {t('reports.refresh')}
             </Button>
           </Space>
         </Form.Item>

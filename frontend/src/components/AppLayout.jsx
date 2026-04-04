@@ -1,4 +1,4 @@
-import { Layout, Menu, theme, Typography, Button, Space, Select } from 'antd'
+import { Layout, Menu, theme, Typography, Button, Space, Select, Segmented } from 'antd'
 import {
   AccountBookOutlined,
   BankOutlined,
@@ -7,13 +7,16 @@ import {
   GlobalOutlined,
   HomeOutlined,
   LogoutOutlined,
+  MoonOutlined,
   SolutionOutlined,
+  SunOutlined,
   WalletOutlined,
 } from '@ant-design/icons'
 import { useMemo } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 const { Header, Sider, Content } = Layout
 
@@ -23,6 +26,7 @@ export function AppLayout() {
   const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
   const { t, i18n } = useTranslation()
+  const { mode, setMode } = useTheme()
   const isRtl = i18n.language === 'ar'
 
   const roleLabel = useMemo(() => {
@@ -45,11 +49,6 @@ export function AppLayout() {
         label: <Link to="/properties">{t('layout.nav.properties')}</Link>,
       },
       {
-        key: '/reports',
-        icon: <FileTextOutlined />,
-        label: <Link to="/reports">{t('layout.nav.reports')}</Link>,
-      },
-      {
         key: '/contracts',
         icon: <SolutionOutlined />,
         label: <Link to="/contracts">{t('layout.nav.contracts')}</Link>,
@@ -69,6 +68,11 @@ export function AppLayout() {
         icon: <FileDoneOutlined />,
         label: <Link to="/vouchers">{t('layout.nav.vouchers')}</Link>,
       },
+      {
+        key: '/reports',
+        icon: <FileTextOutlined />,
+        label: <Link to="/reports">{t('layout.nav.reports')}</Link>,
+      },
     ],
     [t],
   )
@@ -77,11 +81,20 @@ export function AppLayout() {
     <Layout
       style={{
         minHeight: '100vh',
+        height: '100vh',
+        maxHeight: '100vh',
         width: '100%',
+        overflow: 'hidden',
         flexDirection: isRtl ? 'row-reverse' : 'row',
       }}
     >
-      <Sider breakpoint="lg" collapsedWidth="0" theme="dark" width={230}>
+      <Sider
+        breakpoint="lg"
+        collapsedWidth="0"
+        theme="dark"
+        width={230}
+        style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'auto' }}
+      >
         <div
           style={{
             padding: '18px 14px',
@@ -91,6 +104,7 @@ export function AppLayout() {
             letterSpacing: isRtl ? '0' : '0.02em',
             textAlign: isRtl ? 'right' : 'left',
             lineHeight: 1.35,
+            fontFamily: isRtl ? "'Noto Sans Arabic', system-ui, sans-serif" : undefined,
           }}
         >
           {t('brand')}
@@ -102,7 +116,17 @@ export function AppLayout() {
           items={menuItems}
         />
       </Sider>
-      <Layout style={{ flex: 1, minWidth: 0 }}>
+      <Layout
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          overflow: 'hidden',
+        }}
+      >
         <Header
           style={{
             background: token.colorBgContainer,
@@ -111,10 +135,43 @@ export function AppLayout() {
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
+            flexShrink: 0,
+            zIndex: 20,
+            position: 'relative',
           }}
         >
           <Typography.Text type="secondary">{t('layout.tagline')}</Typography.Text>
           <Space size="middle" wrap>
+            <Segmented
+              size="small"
+              className="app-theme-segmented"
+              value={mode}
+              onChange={setMode}
+              options={[
+                {
+                  value: 'light',
+                  label: (
+                    <span className="app-theme-segmented__opt">
+                      <SunOutlined aria-hidden />
+                      <span className="app-theme-segmented__label">
+                        {t('layout.themeLight')}
+                      </span>
+                    </span>
+                  ),
+                },
+                {
+                  value: 'dark',
+                  label: (
+                    <span className="app-theme-segmented__opt">
+                      <MoonOutlined aria-hidden />
+                      <span className="app-theme-segmented__label">
+                        {t('layout.themeDark')}
+                      </span>
+                    </span>
+                  ),
+                },
+              ]}
+            />
             <Space size={4}>
               <GlobalOutlined />
               <Typography.Text type="secondary">{t('layout.language')}</Typography.Text>
@@ -152,9 +209,12 @@ export function AppLayout() {
         <Content
           style={{
             margin: '16px 24px 24px',
-            width: '100%',
             maxWidth: '100%',
             boxSizing: 'border-box',
+            flex: 1,
+            minHeight: 0,
+            overflow: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <Outlet />

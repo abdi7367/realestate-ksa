@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
 import {
@@ -20,27 +21,36 @@ import {
 } from 'antd'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useLocalizedDigits } from '../hooks/useLocalizedDigits'
+import { arabicInputNumberProps } from '../utils/arabicNumerals'
+import { sarDisplay } from '../utils/sarFormat'
 
 function asArray(data) {
   const raw = data?.results ?? data ?? []
   return Array.isArray(raw) ? raw : []
 }
 
-const UNIT_TYPES = [
-  { value: 'apartment', label: 'Apartment' },
-  { value: 'office', label: 'Office' },
-  { value: 'shop', label: 'Shop' },
-  { value: 'villa', label: 'Villa' },
-]
+function unitTypeOptions(t) {
+  return [
+    { value: 'apartment', label: t('propertyDetail.unitTypes.apartment') },
+    { value: 'office', label: t('propertyDetail.unitTypes.office') },
+    { value: 'shop', label: t('propertyDetail.unitTypes.shop') },
+    { value: 'villa', label: t('propertyDetail.unitTypes.villa') },
+  ]
+}
 
-const RENTAL_STATUSES = [
-  { value: 'vacant', label: 'Vacant' },
-  { value: 'occupied', label: 'Occupied' },
-  { value: 'maintenance', label: 'Under maintenance' },
-  { value: 'reserved', label: 'Reserved' },
-]
+function rentalStatusOptions(t) {
+  return [
+    { value: 'vacant', label: t('propertyDetail.rentalStatuses.vacant') },
+    { value: 'occupied', label: t('propertyDetail.rentalStatuses.occupied') },
+    { value: 'maintenance', label: t('propertyDetail.rentalStatuses.maintenance') },
+    { value: 'reserved', label: t('propertyDetail.rentalStatuses.reserved') },
+  ]
+}
 
 export function PropertyDetailPage() {
+  const { t } = useTranslation()
+  const { isArabic, localizeDigits } = useLocalizedDigits()
   const { id } = useParams()
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -84,6 +94,15 @@ export function PropertyDetailPage() {
   const contracts = asArray(contractsData)
   const debts = asArray(debtsData)
   const transactions = asArray(txData)
+
+  const contractStatusLabelByValue = useMemo(
+    () => ({
+      active: t('contracts.statusActive'),
+      expired: t('contracts.statusExpired'),
+      terminated: t('contracts.statusTerminated'),
+    }),
+    [t],
+  )
 
   const upsertUnit = useMutation({
     mutationFn: async (values) => {
@@ -148,24 +167,26 @@ export function PropertyDetailPage() {
     const vacant = units.filter((u) => u.rental_status === 'vacant').length
     const debtTotal = debts.reduce((sum, d) => sum + Number(d.total_amount || 0), 0)
     const txIncome = transactions
-      .filter((t) => t.transaction_type === 'income')
-      .reduce((sum, t) => sum + Number(t.amount || 0), 0)
+      .filter((tx) => tx.transaction_type === 'income')
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
     const txExpense = transactions
-      .filter((t) => t.transaction_type === 'expense')
-      .reduce((sum, t) => sum + Number(t.amount || 0), 0)
+      .filter((tx) => tx.transaction_type === 'expense')
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
     return { activeContracts, occupied, vacant, debtTotal, txIncome, txExpense }
   }, [contracts, units, debts, transactions])
 
-  if (!id) return <Empty description="Property not found" />
+  if (!id) return <Empty description={t('common.noData')} />
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <div>
         <Typography.Text type="secondary">
-          <Link to="/properties">Properties</Link> / Detail
+          <Link to="/properties">{t('propertyDetail.breadcrumb')}</Link> / {t('propertyDetail.detail')}
         </Typography.Text>
         <Typography.Title level={3} style={{ margin: '6px 0 0' }}>
-          {propertyLoading ? 'Loading property...' : property?.name || `Property #${id}`}
+          {propertyLoading
+            ? t('common.loading')
+            : property?.name || localizeDigits(`Property #${id}`)}
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
           {property?.city || '—'} · {property?.district || '—'} · {property?.location || 'No location detail'}
@@ -175,27 +196,40 @@ export function PropertyDetailPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>
           <Card>
-            <Statistic title="Units (occupied / vacant)" value={`${totals.occupied} / ${totals.vacant}`} />
+            <Statistic
+              title={t('propertyDetail.unitsOccVacant')}
+              value={localizeDigits(`${totals.occupied} / ${totals.vacant}`)}
+            />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
           <Card>
-            <Statistic title="Active contracts" value={totals.activeContracts} />
+            <Statistic
+              title={t('propertyDetail.activeContracts')}
+              value={localizeDigits(String(totals.activeContracts))}
+            />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
           <Card>
-            <Statistic title="Total debts (SAR)" value={totals.debtTotal.toFixed(2)} />
+            <Statistic
+              title={t('propertyDetail.totalDebts')}
+              value={sarDisplay(
+                totals.debtTotal.toFixed(2),
+                t('common.currencySAR'),
+                isArabic,
+              )}
+            />
           </Card>
         </Col>
       </Row>
 
       <Card
-        title="Units"
+        title={t('propertyDetail.unitsTitle')}
         extra={
           canManageUnits ? (
             <Button type="primary" onClick={openCreateUnit}>
-              Add unit
+              {t('propertyDetail.addUnit')}
             </Button>
           ) : null
         }
@@ -207,30 +241,50 @@ export function PropertyDetailPage() {
           pagination={false}
           scroll={{ x: true }}
           columns={[
-            { title: 'Unit', dataIndex: 'unit_number', width: 100 },
-            { title: 'Type', dataIndex: 'unit_type', width: 130 },
-            { title: 'Floor', dataIndex: 'floor', width: 90 },
-            { title: 'Size (m²)', dataIndex: 'size_sqm', width: 110 },
-            { title: 'Monthly rent', dataIndex: 'monthly_rent', width: 120 },
             {
-              title: 'Status',
+              title: t('propertyDetail.unitNumber'),
+              dataIndex: 'unit_number',
+              width: 100,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            { title: t('propertyDetail.unitType'), dataIndex: 'unit_type', width: 130 },
+            {
+              title: t('propertyDetail.floor'),
+              dataIndex: 'floor',
+              width: 90,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            {
+              title: t('propertyDetail.sizeSqm'),
+              dataIndex: 'size_sqm',
+              width: 110,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            {
+              title: t('propertyDetail.monthlyRent'),
+              dataIndex: 'monthly_rent',
+              width: 120,
+              render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+            },
+            {
+              title: t('common.status'),
               dataIndex: 'rental_status',
               render: (s) => <Tag color={s === 'occupied' ? 'orange' : 'green'}>{s}</Tag>,
             },
             {
-              title: 'Active tenant',
+              title: t('propertyDetail.activeTenant'),
               key: 'tenant',
               render: (_, row) => row.active_tenant?.name || '—',
             },
             ...(canManageUnits
               ? [
                   {
-                    title: 'Actions',
+                    title: t('common.actions'),
                     key: 'actions',
                     width: 120,
                     render: (_, row) => (
                       <Button size="small" onClick={() => openEditUnit(row)}>
-                        Edit
+                        {t('common.edit')}
                       </Button>
                     ),
                   },
@@ -240,7 +294,9 @@ export function PropertyDetailPage() {
         />
       </Card>
 
-      <Card title={`Contracts (${contracts.length})`}>
+      <Card
+        title={`${t('propertyDetail.contractsTitle')} (${localizeDigits(String(contracts.length))})`}
+      >
         <Table
           rowKey="id"
           loading={contractsLoading}
@@ -248,22 +304,51 @@ export function PropertyDetailPage() {
           pagination={false}
           scroll={{ x: true }}
           columns={[
-            { title: 'ID', dataIndex: 'id', width: 70 },
-            { title: 'Unit', dataIndex: 'unit_number', width: 90 },
-            { title: 'Tenant', dataIndex: 'tenant_name', width: 220 },
-            { title: 'Monthly rent', dataIndex: 'monthly_rent', width: 120 },
-            { title: 'Start', dataIndex: 'start_date', width: 120 },
-            { title: 'End', dataIndex: 'end_date', width: 120 },
             {
-              title: 'Status',
+              title: t('common.id'),
+              dataIndex: 'id',
+              width: 70,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            {
+              title: t('propertyDetail.unitNumber'),
+              dataIndex: 'unit_number',
+              width: 90,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            { title: t('contracts.tenant'), dataIndex: 'tenant_name', width: 220 },
+            {
+              title: t('propertyDetail.monthlyRent'),
+              dataIndex: 'monthly_rent',
+              width: 120,
+              render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+            },
+            {
+              title: t('common.start'),
+              dataIndex: 'start_date',
+              width: 120,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            {
+              title: t('common.end'),
+              dataIndex: 'end_date',
+              width: 120,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            {
+              title: t('common.status'),
               dataIndex: 'status',
-              render: (s) => <Tag color={s === 'active' ? 'green' : 'default'}>{s}</Tag>,
+              render: (s) => (
+                <Tag color={s === 'active' ? 'green' : 'default'}>
+                  {contractStatusLabelByValue[s] ?? s}
+                </Tag>
+              ),
             },
           ]}
         />
       </Card>
 
-      <Card title={`Debts (${debts.length})`}>
+      <Card title={`${t('propertyDetail.debtsTitle')} (${localizeDigits(String(debts.length))})`}>
         <Table
           rowKey="id"
           loading={debtsLoading}
@@ -271,19 +356,54 @@ export function PropertyDetailPage() {
           pagination={false}
           scroll={{ x: true }}
           columns={[
-            { title: 'Type', dataIndex: 'debt_type', width: 150 },
-            { title: 'Creditor', dataIndex: 'creditor_name' },
-            { title: 'Total amount', dataIndex: 'total_amount', width: 140 },
-            { title: 'Remaining', dataIndex: 'remaining_balance', width: 140 },
-            { title: 'Start', dataIndex: 'start_date', width: 120 },
-            { title: 'End', dataIndex: 'end_date', width: 120 },
+            {
+              title: t('common.type'),
+              dataIndex: 'debt_type',
+              width: 150,
+              render: (v) =>
+                v != null
+                  ? t(`debts.debtTypes.${v}`, {
+                      defaultValue: String(v).replace(/_/g, ' '),
+                    })
+                  : '—',
+            },
+            { title: t('debts.creditor'), dataIndex: 'creditor_name' },
+            {
+              title: t('debts.total'),
+              dataIndex: 'total_amount',
+              width: 140,
+              render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+            },
+            {
+              title: t('debts.remaining'),
+              dataIndex: 'remaining_balance',
+              width: 140,
+              render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+            },
+            {
+              title: t('common.start'),
+              dataIndex: 'start_date',
+              width: 120,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            {
+              title: t('common.end'),
+              dataIndex: 'end_date',
+              width: 120,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
           ]}
         />
       </Card>
 
-      <Card title={`Transactions (${transactions.length})`}>
+      <Card
+        title={`${t('propertyDetail.txTitle')} (${localizeDigits(String(transactions.length))})`}
+      >
         <Typography.Paragraph type="secondary">
-          Income: {totals.txIncome.toFixed(2)} SAR · Expense: {totals.txExpense.toFixed(2)} SAR
+          {t('propertyDetail.incomeSAR')}:{' '}
+          {sarDisplay(totals.txIncome.toFixed(2), t('common.currencySAR'), isArabic)} ·{' '}
+          {t('propertyDetail.expenseSAR')}:{' '}
+          {sarDisplay(totals.txExpense.toFixed(2), t('common.currencySAR'), isArabic)}
         </Typography.Paragraph>
         <Table
           rowKey="id"
@@ -292,23 +412,42 @@ export function PropertyDetailPage() {
           pagination={false}
           scroll={{ x: true }}
           columns={[
-            { title: 'Date', dataIndex: 'date', width: 120 },
             {
-              title: 'Type',
+              title: t('common.date'),
+              dataIndex: 'date',
+              width: 120,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
+            {
+              title: t('common.type'),
               dataIndex: 'transaction_type',
               width: 110,
-              render: (t) => <Tag color={t === 'income' ? 'green' : 'orange'}>{t}</Tag>,
+              render: (txType) => <Tag color={txType === 'income' ? 'green' : 'orange'}>{txType}</Tag>,
             },
-            { title: 'Category', dataIndex: 'category', width: 150 },
-            { title: 'Amount', dataIndex: 'amount', width: 120 },
-            { title: 'Description', dataIndex: 'description' },
-            { title: 'Reference', dataIndex: 'reference', width: 150 },
+            { title: t('finance.category'), dataIndex: 'category', width: 150 },
+            {
+              title: t('common.amount'),
+              dataIndex: 'amount',
+              width: 120,
+              render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+            },
+            { title: t('common.description'), dataIndex: 'description' },
+            {
+              title: t('common.reference'),
+              dataIndex: 'reference',
+              width: 150,
+              render: (v) => localizeDigits(String(v ?? '')),
+            },
           ]}
         />
       </Card>
 
       <Modal
-        title={unitModal.unit?.id ? `Edit unit ${unitModal.unit.unit_number}` : 'Add unit'}
+        title={
+          unitModal.unit?.id
+            ? `${t('propertyDetail.editUnit')} ${localizeDigits(String(unitModal.unit.unit_number ?? ''))}`
+            : t('propertyDetail.addUnit')
+        }
         open={unitModal.open}
         onCancel={closeUnitModal}
         footer={null}
@@ -323,15 +462,19 @@ export function PropertyDetailPage() {
             <Col xs={24} sm={12}>
               <Form.Item
                 name="unit_number"
-                label="Unit number"
-                rules={[{ required: true, message: 'Required' }]}
+                label={t('propertyDetail.unitNumber')}
+                rules={[{ required: true, message: t('common.required') }]}
               >
                 <Input placeholder="e.g. 101, A-02, G01" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="floor" label="Floor" rules={[{ required: true, message: 'Required' }]}>
-                <InputNumber style={{ width: '100%' }} />
+              <Form.Item
+                name="floor"
+                label={t('propertyDetail.floor')}
+                rules={[{ required: true, message: t('common.required') }]}
+              >
+                <InputNumber style={{ width: '100%' }} {...arabicInputNumberProps(isArabic)} />
               </Form.Item>
             </Col>
           </Row>
@@ -340,19 +483,19 @@ export function PropertyDetailPage() {
             <Col xs={24} sm={12}>
               <Form.Item
                 name="unit_type"
-                label="Unit type"
-                rules={[{ required: true, message: 'Required' }]}
+                label={t('propertyDetail.unitType')}
+                rules={[{ required: true, message: t('common.required') }]}
               >
-                <Select options={UNIT_TYPES} />
+                <Select options={unitTypeOptions(t)} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="rental_status"
-                label="Rental status"
-                rules={[{ required: true, message: 'Required' }]}
+                label={t('propertyDetail.rentalStatus')}
+                rules={[{ required: true, message: t('common.required') }]}
               >
-                <Select options={RENTAL_STATUSES} />
+                <Select options={rentalStatusOptions(t)} />
               </Form.Item>
             </Col>
           </Row>
@@ -361,32 +504,42 @@ export function PropertyDetailPage() {
             <Col xs={24} sm={12}>
               <Form.Item
                 name="size_sqm"
-                label="Size (m²)"
-                rules={[{ required: true, message: 'Required' }]}
+                label={t('propertyDetail.sizeSqm')}
+                rules={[{ required: true, message: t('common.required') }]}
               >
-                <InputNumber min={0} step={1} style={{ width: '100%' }} />
+                <InputNumber
+                  min={0}
+                  step={1}
+                  style={{ width: '100%' }}
+                  {...arabicInputNumberProps(isArabic)}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="monthly_rent"
-                label="Monthly rent (SAR)"
-                rules={[{ required: true, message: 'Required' }]}
+                label={t('propertyDetail.monthlyRentSAR')}
+                rules={[{ required: true, message: t('common.required') }]}
               >
-                <InputNumber min={0} step={100} style={{ width: '100%' }} />
+                <InputNumber
+                  min={0}
+                  step={100}
+                  style={{ width: '100%' }}
+                  {...arabicInputNumberProps(isArabic)}
+                />
               </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item name="notes" label="Notes (optional)">
+          <Form.Item name="notes" label={t('propertyDetail.noteOptional')}>
             <Input.TextArea rows={3} />
           </Form.Item>
 
           <Space>
             <Button type="primary" htmlType="submit" loading={upsertUnit.isPending}>
-              Save
+              {t('common.save')}
             </Button>
-            <Button onClick={closeUnitModal}>Cancel</Button>
+            <Button onClick={closeUnitModal}>{t('common.cancel')}</Button>
           </Space>
         </Form>
       </Modal>

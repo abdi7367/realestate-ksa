@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Button,
@@ -18,29 +19,67 @@ import {
 import dayjs from 'dayjs'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-
-const PAYMENT_SCHEDULES = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'semi_annual', label: 'Semi-annual' },
-  { value: 'annual', label: 'Annual' },
-  { value: 'lump_sum', label: 'Lump sum' },
-]
-
-const PAYMENT_METHODS = [
-  { value: 'bank_transfer', label: 'Bank transfer' },
-  { value: 'cash', label: 'Cash' },
-  { value: 'cheque', label: 'Cheque' },
-  { value: 'online', label: 'Online' },
-]
-
-const CONTRACT_STATUS_OPTIONS = [
-  { value: 'active', label: 'Active' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'terminated', label: 'Terminated' },
-]
+import { useLocalizedDigits } from '../hooks/useLocalizedDigits'
+import { arabicInputNumberProps } from '../utils/arabicNumerals'
+import { sarDisplay } from '../utils/sarFormat'
 
 export function ContractsPage() {
+  const { t } = useTranslation()
+  const { isArabic, localizeDigits } = useLocalizedDigits()
+  const PAYMENT_SCHEDULES = useMemo(
+    () => [
+      { value: 'monthly', label: t('contracts.scheduleMonthly') },
+      { value: 'quarterly', label: t('contracts.scheduleQuarterly') },
+      { value: 'semi_annual', label: t('contracts.scheduleSemiAnnual') },
+      { value: 'annual', label: t('contracts.scheduleAnnual') },
+      { value: 'lump_sum', label: t('contracts.scheduleLumpSum') },
+    ],
+    [t],
+  )
+  const PAYMENT_METHODS = useMemo(
+    () => [
+      { value: 'bank_transfer', label: t('contracts.methodBankTransfer') },
+      { value: 'cash', label: t('contracts.methodCash') },
+      { value: 'cheque', label: t('contracts.methodCheque') },
+      { value: 'online', label: t('contracts.methodOnline') },
+    ],
+    [t],
+  )
+  const CONTRACT_STATUS_OPTIONS = useMemo(
+    () => [
+      { value: 'active', label: t('contracts.statusActive') },
+      { value: 'expired', label: t('contracts.statusExpired') },
+      { value: 'terminated', label: t('contracts.statusTerminated') },
+    ],
+    [t],
+  )
+  const PAYMENT_FILTER_STATUS_OPTIONS = useMemo(
+    () => [
+      { value: 'confirmed', label: t('contracts.paymentStatusConfirmed') },
+      { value: 'cancelled', label: t('contracts.paymentStatusCancelled') },
+    ],
+    [t],
+  )
+  const scheduleLabelByValue = useMemo(
+    () => Object.fromEntries(PAYMENT_SCHEDULES.map((o) => [o.value, o.label])),
+    [PAYMENT_SCHEDULES],
+  )
+  const contractStatusLabelByValue = useMemo(
+    () =>
+      Object.fromEntries(CONTRACT_STATUS_OPTIONS.map((o) => [o.value, o.label])),
+    [CONTRACT_STATUS_OPTIONS],
+  )
+  const paymentStatusLabelByValue = useMemo(
+    () =>
+      Object.fromEntries(
+        PAYMENT_FILTER_STATUS_OPTIONS.map((o) => [o.value, o.label]),
+      ),
+    [PAYMENT_FILTER_STATUS_OPTIONS],
+  )
+  const paymentMethodLabelByValue = useMemo(
+    () => Object.fromEntries(PAYMENT_METHODS.map((o) => [o.value, o.label])),
+    [PAYMENT_METHODS],
+  )
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [page, setPage] = useState(1)
@@ -140,9 +179,9 @@ export function ContractsPage() {
     const list = Array.isArray(raw) ? raw : []
     return list.map((u) => ({
       value: u.id,
-      label: `${u.property_name ?? 'Property'} — ${u.unit_number} · ${u.property_city ?? ''}`,
+      label: `${u.property_name ?? t('contracts.propertyFallback')} — ${u.unit_number} · ${u.property_city ?? ''}`,
     }))
-  }, [unitsData])
+  }, [unitsData, t])
 
   const rows = useMemo(() => {
     const res = data?.results ?? data ?? []
@@ -244,156 +283,196 @@ export function ContractsPage() {
     })
   }
 
-  const columns = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
-    {
-      title: 'Property / unit',
-      key: 'loc',
-      render: (_, row) => (
-        <span>
-          {row.property_name ?? '—'} · {row.unit_number ?? '—'}
-        </span>
-      ),
-    },
-    {
-      title: 'Tenant',
-      key: 'tenant',
-      ellipsis: true,
-      render: (_, row) => row.tenant_name || '—',
-    },
-    {
-      title: 'Tenant ID',
-      key: 'tenant_ref',
-      width: 100,
-      render: (_, row) => row.tenant?.tenant_reference || '—',
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (s) => <Tag color={s === 'active' ? 'green' : 'default'}>{s}</Tag>,
-    },
-    {
-      title: 'Schedule',
-      dataIndex: 'payment_schedule',
-      key: 'payment_schedule',
-      render: (s) => (s ? <Tag>{s.replace(/_/g, ' ')}</Tag> : '—'),
-    },
-    {
-      title: 'Period',
-      key: 'period',
-      render: (_, row) => (
-        <span style={{ whiteSpace: 'nowrap' }}>
-          {row.start_date} → {row.end_date}
-        </span>
-      ),
-    },
-    {
-      title: 'Rent / mo',
-      dataIndex: 'monthly_rent',
-      key: 'monthly_rent',
-      render: (v) => String(v ?? '—'),
-    },
-    {
-      title: 'Security Deposit',
-      key: 'dep',
-      render: (_, row) => {
-        const amt = row.security_deposit
-        if (amt === undefined || amt === null || String(amt) === '0') return '—'
-        const paid = row.security_deposit_paid
-        return (
+  const columns = useMemo(
+    () => [
+      {
+        title: t('common.id'),
+        dataIndex: 'id',
+        key: 'id',
+        width: 70,
+        render: (v) => localizeDigits(String(v ?? '')),
+      },
+      {
+        title: t('contracts.propertyUnit'),
+        key: 'loc',
+        render: (_, row) => (
           <span>
-            {String(amt)} ·{' '}
-            {paid ? (
-              <Tag color="green">Paid</Tag>
-            ) : (
-              <Tag color="orange">Not paid</Tag>
+            {localizeDigits(
+              `${row.property_name ?? '—'} · ${row.unit_number ?? '—'}`,
             )}
-            {row.security_deposit_received_on
-              ? ` (${row.security_deposit_received_on})`
-              : ''}
           </span>
-        )
+        ),
       },
-    },
-    {
-      title: 'Remaining (incl. VAT)',
-      dataIndex: 'remaining_balance',
-      key: 'rem',
-      render: (v) => String(v ?? '—'),
-    },
-    {
-      title: 'Next instalment (hint)',
-      key: 'inst',
-      width: 130,
-      ellipsis: true,
-      render: (_, row) => {
-        const ig = row.installment_guidance
-        if (!ig || !Number(ig.suggested_next_amount)) return '—'
-        return (
-          <span
-            title={`${ig.installments_remaining} of ${ig.installments_planned} left (${(ig.payment_schedule || '').replace(/_/g, ' ')})`}
-          >
-            {ig.suggested_next_amount}
+      {
+        title: t('contracts.tenant'),
+        key: 'tenant',
+        ellipsis: true,
+        render: (_, row) => row.tenant_name || '—',
+      },
+      {
+        title: t('contracts.tenantId'),
+        key: 'tenant_ref',
+        width: 100,
+        render: (_, row) =>
+          localizeDigits(String(row.tenant?.tenant_reference || '—')),
+      },
+      {
+        title: t('common.status'),
+        dataIndex: 'status',
+        key: 'status',
+        render: (s) => (
+          <Tag color={s === 'active' ? 'green' : 'default'}>
+            {contractStatusLabelByValue[s] ?? s}
+          </Tag>
+        ),
+      },
+      {
+        title: t('contracts.schedule'),
+        dataIndex: 'payment_schedule',
+        key: 'payment_schedule',
+        render: (s) =>
+          s ? (
+            <Tag>{scheduleLabelByValue[s] ?? String(s).replace(/_/g, ' ')}</Tag>
+          ) : (
+            '—'
+          ),
+      },
+      {
+        title: t('contracts.period'),
+        key: 'period',
+        render: (_, row) => (
+          <span style={{ whiteSpace: 'nowrap' }}>
+            {localizeDigits(`${row.start_date} → ${row.end_date}`)}
           </span>
-        )
+        ),
       },
-    },
-    {
-      title: '',
-      key: 'actions',
-      fixed: 'right',
-      width: 280,
-      render: (_, row) => (
-        <Space size="small" wrap>
-          {canEditLeaseTerms && row.status === 'active' && (
-            <Button
-              type="link"
-              size="small"
-              onClick={() => {
-                setEditLeaseTarget(row)
-                leaseTermsMutation.reset()
-                termsForm.setFieldsValue({
-                  duration_months: row.duration_months,
-                  monthly_rent: row.monthly_rent,
-                  start_date: row.start_date ? dayjs(row.start_date) : undefined,
-                  security_deposit: row.security_deposit,
-                  security_deposit_paid: row.security_deposit_paid,
-                  security_deposit_received_on: row.security_deposit_received_on
-                    ? dayjs(row.security_deposit_received_on)
-                    : undefined,
-                })
-              }}
+      {
+        title: t('contracts.rentPerMonth'),
+        dataIndex: 'monthly_rent',
+        key: 'monthly_rent',
+        render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+      },
+      {
+        title: t('contracts.securityDeposit'),
+        key: 'dep',
+        render: (_, row) => {
+          const amt = row.security_deposit
+          if (amt === undefined || amt === null || String(amt) === '0') return '—'
+          const paid = row.security_deposit_paid
+          return (
+            <span>
+              {sarDisplay(amt, t('common.currencySAR'), isArabic)} ·{' '}
+              {paid ? (
+                <Tag color="green">{t('contracts.paid')}</Tag>
+              ) : (
+                <Tag color="orange">{t('contracts.notPaid')}</Tag>
+              )}
+              {row.security_deposit_received_on
+                ? localizeDigits(` (${row.security_deposit_received_on})`)
+                : ''}
+            </span>
+          )
+        },
+      },
+      {
+        title: t('contracts.remainingInclVat'),
+        dataIndex: 'remaining_balance',
+        key: 'rem',
+        render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+      },
+      {
+        title: t('contracts.nextInstalment'),
+        key: 'inst',
+        width: 130,
+        ellipsis: true,
+        render: (_, row) => {
+          const ig = row.installment_guidance
+          if (!ig || !Number(ig.suggested_next_amount)) return '—'
+          return (
+            <span
+              title={t('contracts.installmentTooltip', {
+              remaining: ig.installments_remaining,
+              planned: ig.installments_planned,
+              schedule:
+                scheduleLabelByValue[ig.payment_schedule] ??
+                (ig.payment_schedule || '').replace(/_/g, ' '),
+            })}
             >
-              Edit lease
-            </Button>
-          )}
-          {canRecordPayment && row.status === 'active' && (
-            <Button
-              type="link"
-              size="small"
-              onClick={() => {
-                setPayModal({ open: true, contract: row })
-                payForm.resetFields()
-              }}
-            >
-              Payment
-            </Button>
-          )}
-          {canTerminate && row.status === 'active' && (
-            <Button
-              type="link"
-              size="small"
-              danger
-              onClick={() => setTerminateTarget(row)}
-            >
-              Terminate
-            </Button>
-          )}
-        </Space>
-      ),
-    },
-  ]
+              {sarDisplay(ig.suggested_next_amount, t('common.currencySAR'), isArabic)}
+            </span>
+          )
+        },
+      },
+      {
+        title: '',
+        key: 'actions',
+        fixed: 'right',
+        width: 280,
+        render: (_, row) => (
+          <Space size="small" wrap>
+            {canEditLeaseTerms && row.status === 'active' && (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => {
+                  setEditLeaseTarget(row)
+                  leaseTermsMutation.reset()
+                  termsForm.setFieldsValue({
+                    duration_months: row.duration_months,
+                    monthly_rent: row.monthly_rent,
+                    start_date: row.start_date ? dayjs(row.start_date) : undefined,
+                    security_deposit: row.security_deposit,
+                    security_deposit_paid: row.security_deposit_paid,
+                    security_deposit_received_on: row.security_deposit_received_on
+                      ? dayjs(row.security_deposit_received_on)
+                      : undefined,
+                  })
+                }}
+              >
+                {t('contracts.editLease')}
+              </Button>
+            )}
+            {canRecordPayment && row.status === 'active' && (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => {
+                  setPayModal({ open: true, contract: row })
+                  payForm.resetFields()
+                }}
+              >
+                {t('contracts.payment')}
+              </Button>
+            )}
+            {canTerminate && row.status === 'active' && (
+              <Button
+                type="link"
+                size="small"
+                danger
+                onClick={() => setTerminateTarget(row)}
+              >
+                {t('contracts.terminate')}
+              </Button>
+            )}
+          </Space>
+        ),
+      },
+    ],
+    [
+      t,
+      isArabic,
+      localizeDigits,
+      canEditLeaseTerms,
+      canRecordPayment,
+      canTerminate,
+      leaseTermsMutation,
+      termsForm,
+      payForm,
+      contractStatusLabelByValue,
+      scheduleLabelByValue,
+      paymentMethodLabelByValue,
+    ],
+  )
 
   const createError =
     createMutation.error?.response?.data?.error ||
@@ -427,31 +506,30 @@ export function ContractsPage() {
           }}
         >
           <Typography.Title level={4} style={{ margin: 0 }}>
-            Contracts & payments
+            {t('contracts.title')}
           </Typography.Title>
           {canCreateContract && (
             <Button type="primary" onClick={() => setCreateOpen(true)}>
-              New contract
+              {t('contracts.newContract')}
             </Button>
           )}
         </div>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Active contracts show rent received against total with VAT. Record
-          payments for collections; remaining balance updates automatically.
+          {t('contracts.subtitle')}
         </Typography.Paragraph>
 
         {isError && (
           <Typography.Text type="danger">
-            {error?.message || 'Could not load contracts'}
+            {error?.message || t('contracts.loadContractsError')}
           </Typography.Text>
         )}
 
-        <Card size="small" title="Filter contracts" style={{ marginBottom: 8 }}>
+        <Card size="small" title={t('contracts.filterTitle')} style={{ marginBottom: 8 }}>
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             <Space wrap style={{ width: '100%' }} align="start">
               <Input
                 allowClear
-                placeholder="Search (property, unit, tenant, or contract #)"
+                placeholder={t('contracts.searchPlaceholder')}
                 value={contractDraft.search}
                 style={{ minWidth: 260 }}
                 onChange={(e) =>
@@ -460,7 +538,7 @@ export function ContractsPage() {
               />
               <Select
                 allowClear
-                placeholder="Status"
+                placeholder={t('common.status')}
                 style={{ width: 140 }}
                 options={CONTRACT_STATUS_OPTIONS}
                 value={contractDraft.status}
@@ -470,7 +548,7 @@ export function ContractsPage() {
               />
               <Select
                 allowClear
-                placeholder="Payment schedule"
+                placeholder={t('contracts.paymentSchedule')}
                 style={{ width: 180 }}
                 options={PAYMENT_SCHEDULES}
                 value={contractDraft.payment_schedule}
@@ -485,7 +563,7 @@ export function ContractsPage() {
                   setContractFilters({ ...contractDraft })
                 }}
               >
-                Apply
+                {t('common.apply')}
               </Button>
               <Button
                 onClick={() => {
@@ -499,12 +577,11 @@ export function ContractsPage() {
                   setPage(1)
                 }}
               >
-                Clear
+                {t('common.clear')}
               </Button>
             </Space>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Backend: <code>search</code>, <code>status</code>,{' '}
-              <code>payment_schedule</code>. Numeric search also matches contract id.
+              {t('contracts.backendNote')}
             </Typography.Text>
           </Space>
         </Card>
@@ -520,7 +597,9 @@ export function ContractsPage() {
               return (
                 <div style={{ margin: 0 }}>
                   <Typography.Text strong style={{ display: 'block' }}>
-                    Payments ({payments.length})
+                    {t('contracts.paymentsCount', {
+                      count: payments.length,
+                    })}
                   </Typography.Text>
                   <Table
                     size="small"
@@ -529,32 +608,41 @@ export function ContractsPage() {
                     dataSource={payments}
                     columns={[
                       {
-                        title: 'Date',
+                        title: t('common.date'),
                         dataIndex: 'payment_date',
                         key: 'pd',
+                        render: (v) => (v ? localizeDigits(String(v)) : '—'),
                       },
                       {
-                        title: 'Due',
+                        title: t('contracts.due'),
                         dataIndex: 'due_date',
                         key: 'dd',
-                        render: (v) => v || '—',
+                        render: (v) => (v ? localizeDigits(String(v)) : '—'),
                       },
                       {
-                        title: 'Amount',
+                        title: t('common.amount'),
                         dataIndex: 'amount',
                         key: 'a',
-                        render: (v) => String(v),
+                        render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
                       },
                       {
-                        title: 'Method',
+                        title: t('contracts.method'),
                         dataIndex: 'payment_method',
                         key: 'm',
+                        render: (v) =>
+                          paymentMethodLabelByValue[v] ??
+                          (v != null ? String(v).replace(/_/g, ' ') : '—'),
                       },
                       {
-                        title: 'Late',
+                        title: t('contracts.late'),
                         dataIndex: 'is_late',
                         key: 'il',
-                        render: (v) => (v ? <Tag color="red">Yes</Tag> : 'No'),
+                        render: (v) =>
+                          v ? (
+                            <Tag color="red">{t('contracts.lateYes')}</Tag>
+                          ) : (
+                            t('contracts.lateNo')
+                          ),
                       },
                     ]}
                   />
@@ -577,12 +665,12 @@ export function ContractsPage() {
           scroll={{ x: true }}
         />
 
-        <Card size="small" title="Search all payments" style={{ marginTop: 16 }}>
+        <Card size="small" title={t('contracts.searchPayments')} style={{ marginTop: 16 }}>
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
             <Space wrap style={{ width: '100%' }} align="start">
               <Input
                 allowClear
-                placeholder="Contract # (id)"
+                placeholder={t('contracts.contractNum')}
                 value={payDraft.contract_number}
                 style={{ width: 140 }}
                 onChange={(e) =>
@@ -591,18 +679,15 @@ export function ContractsPage() {
               />
               <Select
                 allowClear
-                placeholder="Payment status"
+                placeholder={t('contracts.paymentStatus')}
                 style={{ width: 160 }}
-                options={[
-                  { value: 'confirmed', label: 'Confirmed' },
-                  { value: 'cancelled', label: 'Cancelled' },
-                ]}
+                options={PAYMENT_FILTER_STATUS_OPTIONS}
                 value={payDraft.status}
                 onChange={(v) => setPayDraft((d) => ({ ...d, status: v }))}
               />
               <Select
                 allowClear
-                placeholder="Payment method"
+                placeholder={t('contracts.paymentMethod')}
                 style={{ width: 170 }}
                 options={PAYMENT_METHODS}
                 value={payDraft.payment_method}
@@ -612,7 +697,7 @@ export function ContractsPage() {
               />
               <Input
                 allowClear
-                placeholder="Search (notes, tenant, property… or contract #)"
+                placeholder={t('contracts.paySearchPlaceholder')}
                 value={payDraft.search}
                 style={{ minWidth: 280 }}
                 onChange={(e) =>
@@ -626,7 +711,7 @@ export function ContractsPage() {
                   setPayFilters({ ...payDraft })
                 }}
               >
-                Apply
+                {t('common.apply')}
               </Button>
               <Button
                 onClick={() => {
@@ -641,18 +726,16 @@ export function ContractsPage() {
                   setPayPage(1)
                 }}
               >
-                Clear
+                {t('common.clear')}
               </Button>
             </Space>
             {payListError && (
               <Typography.Text type="danger">
-                {payListErr?.message || 'Could not load payments'}
+                {payListErr?.message || t('contracts.loadPaymentsError')}
               </Typography.Text>
             )}
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Params: <code>contract_number</code>, <code>status</code>,{' '}
-              <code>payment_method</code>, <code>search</code> (digits-only also
-              matches that contract).
+              {t('contracts.payBackendNote')}
             </Typography.Text>
             <Table
               rowKey="id"
@@ -678,40 +761,58 @@ export function ContractsPage() {
                   : false
               }
               columns={[
-                { title: 'Pay #', dataIndex: 'id', key: 'id', width: 70 },
                 {
-                  title: 'Contract',
+                  title: t('contracts.payNum'),
+                  dataIndex: 'id',
+                  key: 'id',
+                  width: 70,
+                  render: (v) => localizeDigits(String(v ?? '')),
+                },
+                {
+                  title: t('contracts.contract'),
                   dataIndex: 'contract',
                   key: 'contract',
                   width: 90,
+                  render: (v) => localizeDigits(String(v ?? '')),
                 },
                 {
-                  title: 'Date',
+                  title: t('common.date'),
                   dataIndex: 'payment_date',
                   key: 'payment_date',
+                  render: (v) => localizeDigits(String(v ?? '')),
                 },
                 {
-                  title: 'Amount',
+                  title: t('common.amount'),
                   dataIndex: 'amount',
                   key: 'amount',
-                  render: (v) => String(v),
+                  render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
                 },
                 {
-                  title: 'Status',
+                  title: t('common.status'),
                   dataIndex: 'status',
                   key: 'status',
-                  render: (s) => <Tag>{String(s)}</Tag>,
+                  render: (s) => (
+                    <Tag>{paymentStatusLabelByValue[s] ?? String(s)}</Tag>
+                  ),
                 },
                 {
-                  title: 'Method',
+                  title: t('contracts.method'),
                   dataIndex: 'payment_method',
                   key: 'payment_method',
+                  render: (v) =>
+                    paymentMethodLabelByValue[v] ??
+                    (v != null ? String(v).replace(/_/g, ' ') : '—'),
                 },
                 {
-                  title: 'Late',
+                  title: t('contracts.late'),
                   dataIndex: 'is_late',
                   key: 'is_late',
-                  render: (v) => (v ? <Tag color="red">Yes</Tag> : 'No'),
+                  render: (v) =>
+                    v ? (
+                      <Tag color="red">{t('contracts.lateYes')}</Tag>
+                    ) : (
+                      t('contracts.lateNo')
+                    ),
                 },
               ]}
             />
@@ -720,7 +821,7 @@ export function ContractsPage() {
       </Space>
 
       <Modal
-        title="New contract"
+        title={t('contracts.newContractModal.title')}
         open={createOpen}
         onCancel={() => {
           setCreateOpen(false)
@@ -745,95 +846,121 @@ export function ContractsPage() {
         >
           <Form.Item
             name="unit"
-            label="Vacant unit"
-            rules={[{ required: true, message: 'Select a unit' }]}
+            label={t('contracts.newContractModal.vacantUnit')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Select
               options={unitOptions}
               showSearch
               optionFilterProp="label"
-              placeholder="Choose unit"
+              placeholder={t('contracts.chooseUnitPlaceholder')}
             />
           </Form.Item>
           <Typography.Paragraph strong style={{ marginBottom: 8 }}>
-            Tenant (office record — not a login)
+            {t('contracts.newContractModal.tenantSection')}
           </Typography.Paragraph>
           <Form.Item
             name={['tenant_data', 'full_name']}
-            label="Full name"
-            rules={[{ required: true, message: 'Enter full name' }]}
+            label={t('contracts.newContractModal.fullName')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <Input placeholder="As on ID / Iqama" />
+            <Input placeholder={t('contracts.newContractModal.asOnIdPlaceholder')} />
           </Form.Item>
           <Form.Item
             name={['tenant_data', 'national_id']}
-            label="National ID / Iqama number"
-            rules={[{ required: true, message: 'Enter national ID or Iqama' }]}
+            label={t('contracts.newContractModal.nationalId')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <Input placeholder="National ID or Iqama" />
+            <Input placeholder={t('contracts.newContractModal.nationalIdPlaceholder')} />
           </Form.Item>
-          <Form.Item name={['tenant_data', 'phone']} label="Phone number">
-            <Input placeholder="Mobile" />
+          <Form.Item
+            name={['tenant_data', 'phone']}
+            label={t('contracts.newContractModal.phone')}
+          >
+            <Input placeholder={t('contracts.newContractModal.mobilePlaceholder')} />
           </Form.Item>
-          <Form.Item name={['tenant_data', 'email']} label="Email">
-            <Input type="email" placeholder="Optional" />
+          <Form.Item name={['tenant_data', 'email']} label={t('contracts.newContractModal.email')}>
+            <Input type="email" placeholder={t('contracts.newContractModal.optionalPlaceholder')} />
           </Form.Item>
-          <Form.Item name={['tenant_data', 'nationality']} label="Nationality">
-            <Input placeholder="Optional" />
+          <Form.Item
+            name={['tenant_data', 'nationality']}
+            label={t('contracts.newContractModal.nationality')}
+          >
+            <Input placeholder={t('contracts.newContractModal.optionalPlaceholder')} />
           </Form.Item>
-          <Form.Item name={['tenant_data', 'date_of_birth']} label="Date of birth">
+          <Form.Item
+            name={['tenant_data', 'date_of_birth']}
+            label={t('contracts.newContractModal.dateOfBirth')}
+          >
             <DatePicker style={{ width: '100%' }} allowClear />
           </Form.Item>
           <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-            A tenant ID (e.g. T-000042) is assigned automatically when the contract
-            is created.
+            {t('contracts.newContractModal.tenantIdNote')}
           </Typography.Paragraph>
           <Form.Item
             name="monthly_rent"
-            label="Monthly rent (SAR, excl. VAT in calculation — VAT added on total)"
-            rules={[{ required: true, message: 'Enter rent' }]}
+            label={t('contracts.newContractModal.monthlyRent')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={0} step={100} style={{ width: '100%' }} />
+            <InputNumber
+              min={0}
+              step={100}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
           <Form.Item
             name="start_date"
-            label="Start date"
-            rules={[{ required: true, message: 'Pick start date' }]}
+            label={t('contracts.newContractModal.startDate')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-            <strong>Lease length:</strong> full contract in months (e.g.{' '}
-            <strong>12</strong> for one year). Payment schedule (semi-annual,
-            etc.) is only how often rent is collected — totals are always monthly
-            rent × duration + 15% VAT.
+            {t('contracts.newContractModal.durationNote')}
           </Typography.Paragraph>
           <Form.Item
             name="duration_months"
-            label="Duration (months)"
-            rules={[{ required: true, message: 'Enter duration' }]}
+            label={t('contracts.newContractModal.durationMonths')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={1} max={600} style={{ width: '100%' }} />
+            <InputNumber
+              min={1}
+              max={600}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
-          <Form.Item name="security_deposit" label="Security deposit (SAR)">
-            <InputNumber min={0} step={100} style={{ width: '100%' }} />
+          <Form.Item
+            name="security_deposit"
+            label={t('contracts.newContractModal.securityDeposit')}
+          >
+            <InputNumber
+              min={0}
+              step={100}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
-          <Form.Item name="payment_schedule" label="Payment schedule">
+          <Form.Item
+            name="payment_schedule"
+            label={t('contracts.newContractModal.paymentSchedule')}
+          >
             <Select options={PAYMENT_SCHEDULES} />
           </Form.Item>
           <Form.Item>
             <Space>
               <Button type="primary" htmlType="submit" loading={createMutation.isPending}>
-                Create
+                {t('common.create')}
               </Button>
-              <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button onClick={() => setCreateOpen(false)}>{t('common.cancel')}</Button>
             </Space>
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={`Edit lease · contract #${editLeaseTarget?.id ?? ''}`}
+        title={`${t('contracts.editLeaseModal.title')} #${localizeDigits(String(editLeaseTarget?.id ?? ''))}`}
         open={Boolean(editLeaseTarget)}
         onCancel={() => {
           setEditLeaseTarget(null)
@@ -848,8 +975,7 @@ export function ContractsPage() {
           </Typography.Paragraph>
         )}
         <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
-          Updating duration or rent recalculates total + VAT and end date. You cannot
-          set a total below confirmed payments already recorded.
+          {t('contracts.editLeaseModal.subtitle')}
         </Typography.Paragraph>
         <Form
           form={termsForm}
@@ -858,32 +984,53 @@ export function ContractsPage() {
         >
           <Form.Item
             name="monthly_rent"
-            label="Monthly rent (SAR)"
-            rules={[{ required: true, message: 'Enter rent' }]}
+            label={t('contracts.editLeaseModal.monthlyRent')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={0} step={100} style={{ width: '100%' }} />
+            <InputNumber
+              min={0}
+              step={100}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
           <Form.Item
             name="start_date"
-            label="Start date"
-            rules={[{ required: true, message: 'Pick start date' }]}
+            label={t('contracts.editLeaseModal.startDate')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="duration_months"
-            label="Duration (months) — full lease"
-            rules={[{ required: true, message: 'Enter duration' }]}
+            label={t('contracts.editLeaseModal.durationMonths')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={1} max={600} style={{ width: '100%' }} />
+            <InputNumber
+              min={1}
+              max={600}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
-          <Form.Item name="security_deposit" label="Security deposit (SAR)">
-            <InputNumber min={0} step={100} style={{ width: '100%' }} />
+          <Form.Item
+            name="security_deposit"
+            label={t('contracts.editLeaseModal.securityDeposit')}
+          >
+            <InputNumber
+              min={0}
+              step={100}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
           <Form.Item name="security_deposit_paid" valuePropName="checked">
-            <Checkbox>Security deposit received</Checkbox>
+            <Checkbox>{t('contracts.editLeaseModal.depositReceived')}</Checkbox>
           </Form.Item>
-          <Form.Item name="security_deposit_received_on" label="Deposit received on">
+          <Form.Item
+            name="security_deposit_received_on"
+            label={t('contracts.editLeaseModal.depositReceivedOn')}
+          >
             <DatePicker style={{ width: '100%' }} allowClear />
           </Form.Item>
           <Form.Item>
@@ -893,16 +1040,16 @@ export function ContractsPage() {
                 htmlType="submit"
                 loading={leaseTermsMutation.isPending}
               >
-                Save and recalculate
+                {t('contracts.editLeaseModal.saveRecalculate')}
               </Button>
-              <Button onClick={() => setEditLeaseTarget(null)}>Cancel</Button>
+              <Button onClick={() => setEditLeaseTarget(null)}>{t('common.cancel')}</Button>
             </Space>
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={`Record payment · contract #${payModal.contract?.id ?? ''}`}
+        title={`${t('contracts.paymentModal.title')} #${localizeDigits(String(payModal.contract?.id ?? ''))}`}
         open={payModal.open}
         onCancel={() => {
           setPayModal({ open: false, contract: null })
@@ -917,24 +1064,31 @@ export function ContractsPage() {
         {(() => {
           const ig = payModal.contract?.installment_guidance
           if (!ig || !Number(ig.suggested_next_amount)) return null
-          const sched = (ig.payment_schedule || '').replace(/_/g, ' ')
+          const sched =
+            scheduleLabelByValue[ig.payment_schedule] ??
+            (ig.payment_schedule || '').replace(/_/g, ' ')
           return (
             <Card size="small" type="inner" style={{ marginBottom: 16 }}>
               <Typography.Paragraph style={{ marginBottom: 8 }}>
-                <strong>Suggested next payment</strong> (incl. VAT — even split of
-                remaining):{' '}
-                <Typography.Text strong>{ig.suggested_next_amount}</Typography.Text>{' '}
-                SAR
+                <strong>{t('contracts.paymentModal.suggestedTitle')}</strong>{' '}
+                {t('contracts.paymentModal.suggestedDesc')}{' '}
+                <Typography.Text strong>
+                  {localizeDigits(String(ig.suggested_next_amount))}
+                </Typography.Text>{' '}
+                {t('common.currencySAR')}
               </Typography.Paragraph>
               <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
-                Schedule: {sched} · {ig.installments_recorded} payment(s) on file ·{' '}
-                <strong>{ig.installments_remaining}</strong> instalment(s) left of{' '}
-                <strong>{ig.installments_planned}</strong> · remaining balance{' '}
-                {ig.remaining_balance} SAR.
+                {t('contracts.paymentModal.scheduleInfo')}: {sched} ·{' '}
+                {localizeDigits(String(ig.installments_recorded))}{' '}
+                {t('contracts.paymentModal.paymentsOnFile')} ·{' '}
+                <strong>{localizeDigits(String(ig.installments_remaining))}</strong>{' '}
+                {t('contracts.paymentModal.instalmentsLeft')}{' '}
+                <strong>{localizeDigits(String(ig.installments_planned))}</strong> ·{' '}
+                {t('contracts.paymentModal.remainingBalance')}{' '}
+                {localizeDigits(String(ig.remaining_balance))} {t('common.currencySAR')}.
               </Typography.Paragraph>
               <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
-                Each recorded payment counts as one instalment for this hint. Annual
-                and lump-sum leases use one or two splits as appropriate.
+                {t('contracts.paymentModal.instNote')}
               </Typography.Paragraph>
               <Button
                 type="default"
@@ -946,7 +1100,7 @@ export function ContractsPage() {
                   })
                 }
               >
-                Fill suggested amount
+                {t('contracts.paymentModal.fillSuggested')}
               </Button>
             </Card>
           )
@@ -962,40 +1116,48 @@ export function ContractsPage() {
         >
           <Form.Item
             name="amount"
-            label="Amount (SAR, incl. VAT allowed up to remaining balance)"
-            rules={[{ required: true, message: 'Enter amount' }]}
+            label={t('contracts.paymentModal.amount')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={0.01} step={100} style={{ width: '100%' }} />
+            <InputNumber
+              min={0.01}
+              step={100}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
           <Form.Item
             name="payment_date"
-            label="Payment date"
-            rules={[{ required: true, message: 'Pick date' }]}
+            label={t('contracts.paymentModal.paymentDate')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="due_date" label="Due date (optional, for late tracking)">
+          <Form.Item
+            name="due_date"
+            label={t('contracts.paymentModal.dueDate')}
+          >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             name="payment_method"
-            label="Method"
-            rules={[{ required: true, message: 'Select method' }]}
+            label={t('contracts.method')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Select options={PAYMENT_METHODS} />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('common.notes')}>
             <Input.TextArea rows={2} />
           </Form.Item>
           <Form.Item>
             <Space>
               <Button type="primary" htmlType="submit" loading={payMutation.isPending}>
-                Save payment
+                {t('contracts.paymentModal.savePayment')}
               </Button>
               <Button
                 onClick={() => setPayModal({ open: false, contract: null })}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </Space>
           </Form.Item>
@@ -1003,7 +1165,7 @@ export function ContractsPage() {
       </Modal>
 
       <Modal
-        title={`Terminate contract #${terminateTarget?.id ?? ''}`}
+        title={`${t('contracts.terminateModal.title')} #${localizeDigits(String(terminateTarget?.id ?? ''))}`}
         open={Boolean(terminateTarget)}
         onCancel={() => {
           setTerminateTarget(null)
@@ -1016,7 +1178,7 @@ export function ContractsPage() {
           <Typography.Paragraph type="danger">{String(termError)}</Typography.Paragraph>
         )}
         <Typography.Paragraph type="secondary">
-          The unit will be set back to vacant after termination.
+          {t('contracts.terminateModal.subtitle')}
         </Typography.Paragraph>
         <Form
           form={terminateForm}
@@ -1029,7 +1191,7 @@ export function ContractsPage() {
             })
           }
         >
-          <Form.Item name="reason" label="Reason (optional)">
+          <Form.Item name="reason" label={t('contracts.terminateModal.reason')}>
             <Input.TextArea rows={3} />
           </Form.Item>
           <Form.Item>
@@ -1040,9 +1202,9 @@ export function ContractsPage() {
                 htmlType="submit"
                 loading={terminateMutation.isPending}
               >
-                Terminate contract
+                {t('contracts.terminateModal.terminateBtn')}
               </Button>
-              <Button onClick={() => setTerminateTarget(null)}>Cancel</Button>
+              <Button onClick={() => setTerminateTarget(null)}>{t('common.cancel')}</Button>
             </Space>
           </Form.Item>
         </Form>

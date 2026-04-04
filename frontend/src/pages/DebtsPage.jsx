@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Button,
@@ -16,15 +17,9 @@ import {
 } from 'antd'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-
-const DEBT_TYPES = [
-  { value: 'bank_loan', label: 'Bank loan' },
-  { value: 'construction', label: 'Construction loan' },
-  { value: 'maintenance', label: 'Maintenance debt' },
-  { value: 'contractor', label: 'Contractor payment' },
-  { value: 'supplier', label: 'Supplier payment' },
-  { value: 'other', label: 'Other' },
-]
+import { useLocalizedDigits } from '../hooks/useLocalizedDigits'
+import { arabicInputNumberProps } from '../utils/arabicNumerals'
+import { sarDisplay } from '../utils/sarFormat'
 
 const INSTALLMENT_STATUS = [
   { value: 'pending', label: 'Pending' },
@@ -33,6 +28,8 @@ const INSTALLMENT_STATUS = [
 ]
 
 function DebtInstallmentsPanel({ debtId, canWrite }) {
+  const { t } = useTranslation()
+  const { isArabic, localizeDigits } = useLocalizedDigits()
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [form] = Form.useForm()
@@ -66,7 +63,7 @@ function DebtInstallmentsPanel({ debtId, canWrite }) {
       <Space style={{ marginBottom: 8 }}>
         {canWrite && (
           <Button size="small" type="primary" onClick={() => setModalOpen(true)}>
-            Add installment
+            {t('debts.addInstallment')}
           </Button>
         )}
       </Space>
@@ -77,19 +74,34 @@ function DebtInstallmentsPanel({ debtId, canWrite }) {
         pagination={false}
         dataSource={rows}
         columns={[
-          { title: 'Due', dataIndex: 'due_date', key: 'due' },
-          { title: 'Amount', dataIndex: 'amount', key: 'amt', render: (v) => String(v) },
           {
-            title: 'Status',
+            title: t('debts.dueDate'),
+            dataIndex: 'due_date',
+            key: 'due',
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
+          {
+            title: t('common.amount'),
+            dataIndex: 'amount',
+            key: 'amt',
+            render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
+          },
+          {
+            title: t('common.status'),
             dataIndex: 'status',
             key: 'st',
             render: (s) => <Tag>{s}</Tag>,
           },
-          { title: 'Paid on', dataIndex: 'paid_date', key: 'pd' },
+          {
+            title: t('debts.paidOn'),
+            dataIndex: 'paid_date',
+            key: 'pd',
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
         ]}
       />
       <Modal
-        title="New installment"
+        title={t('debts.newInstallment')}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={null}
@@ -110,26 +122,31 @@ function DebtInstallmentsPanel({ debtId, canWrite }) {
         >
           <Form.Item
             name="amount"
-            label="Amount (SAR)"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('common.amountSAR')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={0} step={100} style={{ width: '100%' }} />
+            <InputNumber
+              min={0}
+              step={100}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
           <Form.Item
             name="due_date"
-            label="Due date"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('debts.dueDate')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="status" label="Status" initialValue="pending">
+          <Form.Item name="status" label={t('common.status')} initialValue="pending">
             <Select options={INSTALLMENT_STATUS} />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('common.notes')}>
             <Input.TextArea rows={2} />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={createInst.isPending}>
-            Save
+            {t('common.save')}
           </Button>
         </Form>
       </Modal>
@@ -138,8 +155,25 @@ function DebtInstallmentsPanel({ debtId, canWrite }) {
 }
 
 export function DebtsPage() {
+  const { t } = useTranslation()
+  const { isArabic, localizeDigits } = useLocalizedDigits()
   const queryClient = useQueryClient()
   const { user } = useAuth()
+  const debtTypeOptions = useMemo(
+    () => [
+      { value: 'bank_loan', label: t('debts.debtTypes.bank_loan') },
+      { value: 'construction', label: t('debts.debtTypes.construction') },
+      { value: 'maintenance', label: t('debts.debtTypes.maintenance') },
+      { value: 'contractor', label: t('debts.debtTypes.contractor') },
+      { value: 'supplier', label: t('debts.debtTypes.supplier') },
+      { value: 'other', label: t('debts.debtTypes.other') },
+    ],
+    [t],
+  )
+  const debtTypeLabelByValue = useMemo(
+    () => Object.fromEntries(debtTypeOptions.map((o) => [o.value, o.label])),
+    [debtTypeOptions],
+  )
   const [page, setPage] = useState(1)
   const [propertyId, setPropertyId] = useState(undefined)
   const [debtType, setDebtType] = useState(undefined)
@@ -210,17 +244,17 @@ export function DebtsPage() {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Typography.Title level={4} style={{ margin: 0 }}>
-        Debts
+        {t('debts.title')}
       </Typography.Title>
       <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>
-        Property-linked loans and payables. Installments can be tracked under each debt.
+        {t('debts.subtitle')}
       </Typography.Paragraph>
 
       <Card size="small">
         <Space wrap align="center">
           <Select
             allowClear
-            placeholder="Property"
+            placeholder={t('common.property')}
             style={{ minWidth: 200 }}
             options={propertyOptions}
             value={propertyId}
@@ -231,9 +265,9 @@ export function DebtsPage() {
           />
           <Select
             allowClear
-            placeholder="Debt type"
+            placeholder={t('debts.debtType')}
             style={{ minWidth: 180 }}
-            options={DEBT_TYPES}
+            options={debtTypeOptions}
             value={debtType}
             onChange={(v) => {
               setDebtType(v)
@@ -242,7 +276,7 @@ export function DebtsPage() {
           />
           {canWrite && (
             <Button type="primary" onClick={() => setCreateOpen(true)}>
-              Add debt
+              {t('debts.addDebt')}
             </Button>
           )}
         </Space>
@@ -270,41 +304,61 @@ export function DebtsPage() {
           onChange: (p) => setPage(p),
         }}
         columns={[
-          { title: 'ID', dataIndex: 'id', width: 70 },
           {
-            title: 'Property',
+            title: t('common.id'),
+            dataIndex: 'id',
+            width: 70,
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
+          {
+            title: t('common.property'),
             key: 'prop',
-            render: (_, row) => propertyNameById.get(row.property) ?? row.property,
+            render: (_, row) =>
+              localizeDigits(
+                String(propertyNameById.get(row.property) ?? row.property ?? ''),
+              ),
           },
           {
-            title: 'Type',
+            title: t('common.type'),
             dataIndex: 'debt_type',
-            render: (t) => t?.replace(/_/g, ' ') ?? '—',
+            render: (typeVal) =>
+              debtTypeLabelByValue[typeVal] ??
+              (typeVal != null
+                ? t(`debts.debtTypes.${typeVal}`, {
+                    defaultValue: String(typeVal).replace(/_/g, ' '),
+                  })
+                : '—'),
           },
-          { title: 'Creditor', dataIndex: 'creditor_name', ellipsis: true },
+          { title: t('debts.creditor'), dataIndex: 'creditor_name', ellipsis: true },
           {
-            title: 'Total',
+            title: t('debts.total'),
             dataIndex: 'total_amount',
-            render: (v) => String(v ?? '—'),
+            render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
           },
           {
-            title: 'Paid',
+            title: t('debts.paid'),
             dataIndex: 'paid_amount',
             key: 'paid',
-            render: (_, row) => String(row.paid_amount ?? '0'),
+            render: (_, row) =>
+              sarDisplay(row.paid_amount ?? 0, t('common.currencySAR'), isArabic),
           },
           {
-            title: 'Remaining',
+            title: t('debts.remaining'),
             dataIndex: 'remaining_balance',
             key: 'rem',
-            render: (_, row) => String(row.remaining_balance ?? '—'),
+            render: (_, row) =>
+              sarDisplay(row.remaining_balance, t('common.currencySAR'), isArabic),
           },
-          { title: 'Start', dataIndex: 'start_date' },
+          {
+            title: t('common.start'),
+            dataIndex: 'start_date',
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
         ]}
       />
 
       <Modal
-        title="New debt"
+        title={t('debts.newDebt')}
         open={createOpen}
         onCancel={() => setCreateOpen(false)}
         footer={null}
@@ -313,50 +367,61 @@ export function DebtsPage() {
         <Form form={form} layout="vertical" onFinish={onCreate}>
           <Form.Item
             name="property"
-            label="Property"
-            rules={[{ required: true, message: 'Select property' }]}
+            label={t('common.property')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Select options={propertyOptions} showSearch optionFilterProp="label" />
           </Form.Item>
           <Form.Item
             name="debt_type"
-            label="Debt type"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('debts.debtType')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <Select options={DEBT_TYPES} />
+            <Select options={debtTypeOptions} />
           </Form.Item>
           <Form.Item
             name="creditor_name"
-            label="Creditor name"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('debts.creditorName')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="total_amount"
-            label="Total amount (SAR)"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('debts.totalAmount')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={0} step={1000} style={{ width: '100%' }} />
+            <InputNumber
+              min={0}
+              step={1000}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
-          <Form.Item name="interest_rate" label="Interest rate (%)" initialValue={0}>
-            <InputNumber min={0} max={100} step={0.01} style={{ width: '100%' }} />
+          <Form.Item name="interest_rate" label={t('debts.interestRate')} initialValue={0}>
+            <InputNumber
+              min={0}
+              max={100}
+              step={0.01}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
           <Form.Item
             name="start_date"
-            label="Start date"
-            rules={[{ required: true, message: 'Required' }]}
+            label={t('debts.startDate')}
+            rules={[{ required: true, message: t('common.required') }]}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="end_date" label="End date (optional)">
+          <Form.Item name="end_date" label={t('debts.endDate')}>
             <DatePicker style={{ width: '100%' }} allowClear />
           </Form.Item>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label={t('common.notes')}>
             <Input.TextArea rows={3} />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={createDebt.isPending}>
-            Create
+            {t('common.create')}
           </Button>
         </Form>
       </Modal>
