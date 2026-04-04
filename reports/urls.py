@@ -10,6 +10,7 @@ from .views import (
     OutstandingBalancesReportView,
     OwnershipReportView,
     PropertyIncomeReportView,
+    PropertyIncomeReportPdfView,
     PropertyProfitabilityReportView,
     TenantPaymentReportView,
     VoucherReportView,
@@ -17,6 +18,7 @@ from .views import (
 
 urlpatterns = [
     path('reports/property-income/', PropertyIncomeReportView.as_view()),
+    path('reports/property-income/pdf/', PropertyIncomeReportPdfView.as_view()),
     path('reports/contracts/', ContractReportView.as_view()),
     path('reports/tenant-payments/', TenantPaymentReportView.as_view()),
     path('reports/outstanding-balances/', OutstandingBalancesReportView.as_view()),

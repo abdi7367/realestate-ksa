@@ -1,4 +1,4 @@
-import { ConfigProvider, theme } from 'antd'
+import { App as AntApp, ConfigProvider, theme } from 'antd'
 import arEG from 'antd/locale/ar_EG'
 import enUS from 'antd/locale/en_US'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -61,9 +61,11 @@ function AppWithTheme() {
         },
       }}
     >
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <AntApp>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </AntApp>
     </ConfigProvider>
   )
 }

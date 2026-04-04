@@ -6,6 +6,8 @@ from decimal import Decimal
 
 from django.http import HttpResponse
 from django.db.models import Sum
+from django.db.models.functions import TruncMonth
+from django.utils import timezone
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -22,6 +24,11 @@ from reports.cashflow_pdf import (
     ArabicPdfFontMissing,
     build_cash_flow_pdf_bytes,
     cash_flow_attachment_filename,
+)
+from reports.pdf_master import CompanyInfo
+from reports.property_income_pdf import (
+    build_property_income_pdf_bytes,
+    property_income_attachment_filename,
 )
 
 
@@ -83,6 +90,12 @@ class PropertyIncomeReportView(APIView):
         if month := request.query_params.get('month'):
             qs = qs.filter(date__month=int(month))
         by_category = list(qs.values('category').annotate(total=Sum('amount')))
+        monthly_trend = list(
+            qs.annotate(month=TruncMonth('date'))
+            .values('month')
+            .annotate(total=Sum('amount'))
+            .order_by('month')
+        )
         total = qs.aggregate(s=Sum('amount'))['s'] or Decimal('0')
         return Response({
             'report': 'property_income',
@@ -94,6 +107,108 @@ class PropertyIncomeReportView(APIView):
             'by_category': by_category,
             'total_income': str(total),
         })
+
+
+class PropertyIncomeReportPdfView(APIView):
+    """Printable Property Income PDF using the master report layout."""
+
+    permission_classes = [ReportingPermission]
+
+    def get(self, request):
+        pid = request.query_params.get('property_id')
+        year = request.query_params.get('year')
+        month = request.query_params.get('month')
+
+        qs = Transaction.objects.filter(transaction_type='income').select_related('property')
+        if pid:
+            qs = qs.filter(property_id=pid)
+        if year:
+            qs = qs.filter(date__year=int(year))
+        if month:
+            qs = qs.filter(date__month=int(month))
+
+        total_income = qs.aggregate(s=Sum('amount'))['s'] or Decimal('0')
+        total_rental_income = qs.filter(category='rental').aggregate(s=Sum('amount'))['s'] or Decimal('0')
+        total_other_income = total_income - total_rental_income
+        by_category = list(qs.values('category').annotate(total=Sum('amount')))
+        monthly_trend = list(
+            qs.annotate(month=TruncMonth('date'))
+            .values('month')
+            .annotate(total=Sum('amount'))
+            .order_by('month')
+        )
+
+        rows = []
+        for t in qs.order_by('date', 'id')[:1000]:
+            rows.append({
+                'date': t.date,
+                # Unit / Tenant are not available on Transaction model.
+                'unit': '—',
+                'tenant': '—',
+                'income_type': t.get_category_display() if hasattr(t, 'get_category_display') else t.category,
+                'amount': t.amount,
+            })
+
+        pf = _property_filter_fields(request)
+        prop_city = None
+        if pid:
+            prop_city = Property.objects.filter(pk=pid).values_list('city', flat=True).first()
+
+        user = getattr(request, "user", None)
+        generated_by = (
+            (getattr(user, "get_full_name", lambda: "")() or "").strip()
+            or getattr(user, "username", "")
+            or "System"
+        )
+        company = CompanyInfo(
+            name="Real Estate KSA",
+            address_line="Riyadh, Saudi Arabia",
+            contact_line="+966 XX XXX XXXX | info@example.com",
+            vat_number="VAT-XXXXXXXXX",
+            logo_path=None,
+        )
+        report_id = f"RPT-PI-{date.today().strftime('%Y%m%d')}"
+
+        # Required filters/header details
+        filters = []
+        if pf.get('property_name'):
+            filters.append(f"Property: {pf['property_name']} (ID {pf['property_id']})")
+        elif pid:
+            filters.append(f"Property ID: {pid}")
+        else:
+            filters.append("Property: All")
+        filters.append(f"Location: {prop_city or '—'}")
+        if year and month:
+            filters.append(f"Report Period: {year}-{int(month):02d} (Monthly)")
+            period_key = f"{year}-{int(month):02d}"
+            period_label = f"{year}-{int(month):02d} (Monthly)"
+        elif year:
+            filters.append(f"Report Period: {year} (Yearly)")
+            period_key = str(year)
+            period_label = f"{year} (Yearly)"
+        else:
+            filters.append("Report Period: All Dates")
+            period_key = timezone.now().strftime('%Y-%m')
+            period_label = "All Dates"
+
+        pdf = build_property_income_pdf_bytes(
+            report_id=report_id,
+            generated_by=generated_by,
+            company=company,
+            filters=filters,
+            total_rental_income=total_rental_income,
+            total_other_income=total_other_income,
+            total_income=total_income,
+            rows=rows,
+            by_category=by_category,
+            monthly_trend=monthly_trend,
+            period_label=period_label,
+        )
+
+        filename = property_income_attachment_filename(period_key, pid)
+        resp = HttpResponse(pdf, content_type='application/pdf')
+        resp['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return resp
 
 
 class ContractReportView(APIView):
@@ -389,6 +504,31 @@ class CashFlowReportPdfView(APIView):
         v_rows = list(vq.select_related('property').order_by('date', 'id')[:500])
         p_rows = list(pq.order_by('payment_date', 'id')[:500])
 
+        user = getattr(request, "user", None)
+        generated_by = (
+            (getattr(user, "get_full_name", lambda: "")() or "").strip()
+            or getattr(user, "username", "")
+            or "System"
+        )
+
+        company = CompanyInfo(
+            name="Real Estate KSA",
+            address_line="Riyadh, Saudi Arabia",
+            contact_line="+966 XX XXX XXXX | info@example.com",
+            vat_number="VAT-XXXXXXXXX",
+            logo_path=None,
+        )
+
+        report_id = f"RPT-CF-{date.today().strftime('%Y%m%d')}"
+        filters = []
+        if pf.get("property_name"):
+            filters.append(f"Property: {pf['property_name']}")
+        elif pid:
+            filters.append(f"Property ID: {pid}")
+        else:
+            filters.append("Property: All")
+        filters.append(f"Date: {date_from.isoformat()} – {date_to.isoformat()}")
+
         try:
             pdf = build_cash_flow_pdf_bytes(
                 date_from=date_from,
@@ -403,6 +543,10 @@ class CashFlowReportPdfView(APIView):
                 v_rows=v_rows,
                 p_rows=p_rows,
                 ui_lang=ui_lang,
+                company=company,
+                report_id=report_id,
+                generated_by=generated_by,
+                filters=filters,
             )
         except ArabicPdfFontMissing as exc:
             return Response({'detail': str(exc)}, status=500)
