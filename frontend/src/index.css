@@ -17,7 +17,7 @@
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -30,33 +30,66 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --bg: #16171d;
+  --border: #2e303a;
+  --code-bg: #1f2028;
+  --accent: #c084fc;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.5);
+  --social-bg: rgba(47, 48, 58, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+}
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+html[data-theme='dark'] #social .button-icon {
+  filter: invert(1) brightness(2);
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
 }
 
 [dir='rtl'] body,
 [dir='rtl'] #root {
   font-family: 'Noto Sans Arabic', 'Segoe UI', system-ui, sans-serif;
+}
+
+/*
+ * Arabic-Indic digits (U+0660–U+0669): digit zero (٠) is easy to mistake for a dot
+ * at default body size. Slightly larger + medium weight improves legibility.
+ */
+[dir='rtl'] .ant-statistic-content-value {
+  font-size: 1.14em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+[dir='rtl'] .ant-input-number .ant-input-number-input {
+  font-size: 1.1em;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+[dir='rtl'] .ant-pagination .ant-pagination-item a,
+[dir='rtl'] .ant-pagination .ant-pagination-jump-prev,
+[dir='rtl'] .ant-pagination .ant-pagination-jump-next,
+[dir='rtl'] .ant-pagination-prev .ant-pagination-item-link,
+[dir='rtl'] .ant-pagination-next .ant-pagination-item-link,
+[dir='rtl'] .ant-pagination-total-text {
+  font-size: 1.08em;
+  font-weight: 500;
+}
+
+[dir='rtl'] .report-bidi-value {
+  font-size: 1.1em;
+  font-weight: 500;
+  letter-spacing: 0.03em;
 }
 
 /* ── Global RTL layout helpers ─────────────────────────────────────── */
@@ -70,6 +103,7 @@ body {
 
 [dir='rtl'] .ant-table-cell {
   text-align: start;
+  font-size: 1.06em;
 }
 
 [dir='rtl'] .ant-form-item-label > label {
@@ -176,6 +210,72 @@ body {
 .dashboard-hero > * {
   position: relative;
   z-index: 1;
+}
+
+/* Dashboard hero when app theme is dark (manual toggle, not OS) */
+html[data-theme='dark'] .dashboard-hero {
+  border-color: var(--border);
+  background:
+    radial-gradient(circle at 86% 16%, rgba(45, 212, 191, 0.12), transparent 44%),
+    radial-gradient(circle at 14% 88%, rgba(129, 140, 248, 0.1), transparent 46%),
+    var(--dashboard-hero-image) center 56% / 108% no-repeat,
+    #0b1220;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    0 3px 10px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme='dark'] .dashboard-hero::before {
+  background: linear-gradient(
+    105deg,
+    rgba(15, 23, 42, 0.94) 2%,
+    rgba(15, 23, 42, 0.86) 46%,
+    rgba(15, 23, 42, 0.65) 72%,
+    rgba(15, 23, 42, 0.35) 100%
+  );
+}
+
+html[data-theme='dark'] .dashboard-hero::after {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.15));
+}
+
+html[data-theme='dark'] .dashboard-hero--rtl {
+  background:
+    radial-gradient(circle at 14% 16%, rgba(45, 212, 191, 0.12), transparent 44%),
+    radial-gradient(circle at 86% 88%, rgba(129, 140, 248, 0.1), transparent 46%),
+    var(--dashboard-hero-image) center 56% / 108% no-repeat,
+    #0b1220;
+}
+
+html[data-theme='dark'] .dashboard-hero--rtl::before {
+  background: linear-gradient(
+    -105deg,
+    rgba(15, 23, 42, 0.94) 2%,
+    rgba(15, 23, 42, 0.86) 46%,
+    rgba(15, 23, 42, 0.65) 72%,
+    rgba(15, 23, 42, 0.35) 100%
+  );
+}
+
+html[data-theme='dark'] .dashboard-hero-desc {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .dashboard-welcome-line {
+  color: #e2e8f0;
+  background: rgba(30, 41, 59, 0.65);
+  border-color: rgba(100, 116, 139, 0.4);
+}
+
+html[data-theme='dark'] .dashboard-eyebrow {
+  color: #a5b4fc !important;
+}
+
+html[data-theme='dark'] .dashboard-hero-art-wrapper {
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .dashboard-hero-copy {
@@ -363,8 +463,20 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* Equal-height module cards in each row */
+.dashboard-cards-row {
+  align-items: stretch;
+}
+
+.dashboard-cards-row > .ant-col {
+  display: flex;
+}
+
 .dashboard-card {
+  width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
   border-radius: 12px !important;
   transition:
     transform 0.2s ease,
@@ -377,16 +489,36 @@ body {
 }
 
 .dashboard-card .ant-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 20px 22px;
+  min-height: 0;
 }
 
 .dashboard-card-link {
   color: inherit;
-  display: block;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 .dashboard-card-link:hover {
   color: inherit;
+}
+
+.dashboard-card-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.dashboard-page--rtl .dashboard-card-inner {
+  flex-direction: row-reverse;
 }
 
 .dashboard-card-icon {
@@ -401,7 +533,10 @@ body {
 }
 
 .dashboard-card-body {
+  flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .dashboard-card-title {
@@ -409,12 +544,18 @@ body {
 }
 
 .dashboard-card-desc {
+  flex: 1 1 auto;
   margin-bottom: 10px !important;
   font-size: 14px;
 }
 
 .dashboard-card-cta {
   font-weight: 600;
+  margin-top: auto;
+}
+
+.dashboard-card-cta .anticon {
+  vertical-align: -0.125em;
 }
 
 /* Full-viewport app shell — avoid narrow centered column so tables can use full width */
@@ -483,4 +624,27 @@ code {
 }
 .report-chart-ltr {
   direction: ltr;
+}
+
+/* Header: light / dark theme switcher */
+.app-theme-segmented.ant-segmented {
+  font-weight: 600;
+}
+
+.app-theme-segmented__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+@media (max-width: 576px) {
+  .app-theme-segmented__label {
+    display: none;
+  }
+
+  .app-theme-segmented__opt {
+    gap: 0;
+    padding: 0 2px;
+  }
 }

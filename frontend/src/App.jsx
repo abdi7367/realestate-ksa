@@ -4,6 +4,7 @@ import enUS from 'antd/locale/en_US'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AuthProvider } from './context/AuthContext'
+import { useTheme } from './context/ThemeContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AppLayout } from './components/AppLayout'
 import { LoginPage } from './pages/LoginPage'
@@ -45,6 +46,7 @@ function AppRoutes() {
 
 function AppWithTheme() {
   const { i18n } = useTranslation()
+  const { mode } = useTheme()
   const isAr = i18n.language === 'ar'
 
   return (
@@ -52,7 +54,7 @@ function AppWithTheme() {
       direction={isAr ? 'rtl' : 'ltr'}
       locale={isAr ? arEG : enUS}
       theme={{
-        algorithm: theme.defaultAlgorithm,
+        algorithm: mode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: '#0d9488',
           borderRadiusLG: 12,

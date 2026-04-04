@@ -1,12 +1,14 @@
 import { useEffect } from 'react'
-import { Button, Card, Form, Input, Typography, message, Select, Space } from 'antd'
-import { GlobalOutlined } from '@ant-design/icons'
+import { Button, Card, Form, Input, Typography, message, Select, Space, Segmented } from 'antd'
+import { GlobalOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 
 export function LoginPage() {
   const { t, i18n } = useTranslation()
+  const { mode, setMode } = useTheme()
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -39,7 +41,33 @@ export function LoginPage() {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <Space size={8}>
+        <Space size={8} wrap>
+          <Segmented
+            size="small"
+            className="app-theme-segmented"
+            value={mode}
+            onChange={setMode}
+            options={[
+              {
+                value: 'light',
+                label: (
+                  <span className="app-theme-segmented__opt">
+                    <SunOutlined aria-hidden />
+                    <span className="app-theme-segmented__label">{t('layout.themeLight')}</span>
+                  </span>
+                ),
+              },
+              {
+                value: 'dark',
+                label: (
+                  <span className="app-theme-segmented__opt">
+                    <MoonOutlined aria-hidden />
+                    <span className="app-theme-segmented__label">{t('layout.themeDark')}</span>
+                  </span>
+                ),
+              },
+            ]}
+          />
           <GlobalOutlined />
           <Select
             size="small"

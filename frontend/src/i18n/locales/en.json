@@ -4,6 +4,10 @@
     "tagline": "Property management suite",
     "logout": "Log out",
     "language": "Language",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeUseLight": "Use light theme",
+    "themeUseDark": "Use dark theme",
     "nav": {
       "dashboard": "Dashboard",
       "properties": "Properties",
@@ -82,6 +86,7 @@
     "status": "Status",
     "date": "Date",
     "amount": "Amount",
+    "currencySAR": "SAR",
     "amountSAR": "Amount (SAR)",
     "notes": "Notes",
     "property": "Property",
@@ -90,7 +95,8 @@
     "type": "Type",
     "start": "Start",
     "end": "End",
-    "all": "All"
+    "all": "All",
+    "invalidEmail": "Invalid email"
   },
   "properties": {
     "title": "Properties",
@@ -98,6 +104,17 @@
     "addProperty": "Add property",
     "addFirst": "Add your first property",
     "noProperties": "No properties yet",
+    "loadError": "Could not load properties",
+    "paginationTotal": "{{count}} properties",
+    "ownerDetailsAria": "Show registered owner details",
+    "registeredOwner": "Registered owner",
+    "close": "Close",
+    "types": {
+      "residential": "Residential",
+      "commercial": "Commercial",
+      "industrial": "Industrial",
+      "land": "Land"
+    },
     "code": "Code",
     "name": "Name",
     "type": "Type",
@@ -136,7 +153,33 @@
       "ownershipStatus": "Ownership status (optional)",
       "propertyManager": "Property manager (optional)",
       "propertyManagerHelp": "Users with manager / admin roles",
-      "createBtn": "Create property"
+      "propertyManagerPlaceholder": "Assign a manager",
+      "createBtn": "Create property",
+      "ruleSelectType": "Select type",
+      "ruleName": "Enter property name",
+      "ruleCity": "Enter city",
+      "ruleDistrict": "Enter district",
+      "ruleSize": "Enter size",
+      "ruleNumUnits": "Enter unit count",
+      "ruleOwnerName": "Enter owner name",
+      "ruleOwnerId": "Enter ID",
+      "rulePhone": "Enter phone",
+      "ruleEmail": "Enter email",
+      "ruleEmailInvalid": "Invalid email",
+      "ruleIban": "Enter IBAN or account",
+      "phCode": "e.g. OLAYA-001",
+      "phName": "Building or complex name",
+      "phCity": "Riyadh",
+      "phDistrict": "Al Olaya",
+      "phLocation": "Street, landmark…",
+      "phSize": "Land / building area",
+      "phOwnerName": "Landlord / lessor name",
+      "phNationalId": "10-digit national ID or Iqama",
+      "phPhone": "+966…",
+      "phEmail": "owner@example.com",
+      "phIban": "SA…",
+      "phOwnerAddress": "Street, building, optional",
+      "phOwnership": "e.g. Owned, leased land"
     }
   },
   "propertyDetail": {
@@ -224,6 +267,7 @@
     "statusTerminated": "Terminated",
     "paymentStatusConfirmed": "Confirmed",
     "paymentStatusCancelled": "Cancelled",
+    "installmentTooltip": "{{remaining}} of {{planned}} left ({{schedule}})",
     "paymentsCount": "Payments ({{count}})",
     "propertyFallback": "Property",
     "chooseUnitPlaceholder": "Choose unit",
@@ -295,6 +339,10 @@
     "searchPlaceholder": "Search description / reference",
     "category": "Category",
     "newTransaction": "New transaction",
+    "transactionTypes": {
+      "income": "Income",
+      "expense": "Expense"
+    },
     "incomeCategories": {
       "rental": "Rental income",
       "parking": "Parking",
@@ -382,7 +430,15 @@
   },
   "reports": {
     "title": "Reports",
-    "intro": "Step 1: browse API-backed reports. Pick a report, set filters, then run.",
+    "intro": "Choose one of the four reports below, set filters, then run. Cash flow includes an optional PDF download.",
+    "reportType": "Report",
+    "chooseReport": "Choose a report",
+    "types": {
+      "income_statement": "Income statement",
+      "expenses": "Expense report",
+      "cash_flow": "Cash flow report",
+      "vouchers": "Voucher report"
+    },
     "output": "Output",
     "property": "Property",
     "period": "Period",

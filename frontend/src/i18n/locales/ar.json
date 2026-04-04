@@ -4,6 +4,10 @@
     "tagline": "منصة إدارة العقارات",
     "logout": "تسجيل الخروج",
     "language": "اللغة",
+    "themeLight": "فاتح",
+    "themeDark": "داكن",
+    "themeUseLight": "الوضع الفاتح",
+    "themeUseDark": "الوضع الداكن",
     "nav": {
       "dashboard": "لوحة التحكم",
       "properties": "العقارات",
@@ -82,6 +86,7 @@
     "status": "الحالة",
     "date": "التاريخ",
     "amount": "المبلغ",
+    "currencySAR": "ر.س",
     "amountSAR": "المبلغ (ر.س)",
     "notes": "ملاحظات",
     "property": "العقار",
@@ -90,7 +95,8 @@
     "type": "النوع",
     "start": "البداية",
     "end": "النهاية",
-    "all": "الكل"
+    "all": "الكل",
+    "invalidEmail": "بريد إلكتروني غير صالح"
   },
   "properties": {
     "title": "العقارات",
@@ -98,6 +104,17 @@
     "addProperty": "إضافة عقار",
     "addFirst": "أضف أول عقار",
     "noProperties": "لا توجد عقارات بعد",
+    "loadError": "تعذّر تحميل العقارات",
+    "paginationTotal": "{{count}} عقارًا",
+    "ownerDetailsAria": "عرض بيانات المالك المسجّل",
+    "registeredOwner": "المالك المسجّل",
+    "close": "إغلاق",
+    "types": {
+      "residential": "سكني",
+      "commercial": "تجاري",
+      "industrial": "صناعي",
+      "land": "أرض"
+    },
     "code": "الرمز",
     "name": "الاسم",
     "type": "النوع",
@@ -136,7 +153,33 @@
       "ownershipStatus": "حالة الملكية (اختياري)",
       "propertyManager": "مدير العقار (اختياري)",
       "propertyManagerHelp": "مستخدمون بدور مدير أو مسؤول",
-      "createBtn": "إنشاء العقار"
+      "propertyManagerPlaceholder": "تعيين مدير",
+      "createBtn": "إنشاء العقار",
+      "ruleSelectType": "اختر النوع",
+      "ruleName": "أدخل اسم العقار",
+      "ruleCity": "أدخل المدينة",
+      "ruleDistrict": "أدخل الحي",
+      "ruleSize": "أدخل المساحة",
+      "ruleNumUnits": "أدخل عدد الوحدات",
+      "ruleOwnerName": "أدخل اسم المالك",
+      "ruleOwnerId": "أدخل رقم الهوية",
+      "rulePhone": "أدخل الهاتف",
+      "ruleEmail": "أدخل البريد",
+      "ruleEmailInvalid": "بريد غير صالح",
+      "ruleIban": "أدخل الآيبان أو رقم الحساب",
+      "phCode": "مثلاً OLAYA-001",
+      "phName": "اسم المبنى أو المجمع",
+      "phCity": "الرياض",
+      "phDistrict": "العليا",
+      "phLocation": "الشارع، علامة مميزة…",
+      "phSize": "مساحة الأرض أو البناء",
+      "phOwnerName": "اسم المؤجّر / المالك",
+      "phNationalId": "هوية وطنية أو إقامة (10 أرقام)",
+      "phPhone": "+966…",
+      "phEmail": "owner@example.com",
+      "phIban": "SA…",
+      "phOwnerAddress": "الشارع، المبنى، اختياري",
+      "phOwnership": "مثلاً: مملوك، أرض مؤجرة"
     }
   },
   "propertyDetail": {
@@ -224,6 +267,7 @@
     "statusTerminated": "منهى",
     "paymentStatusConfirmed": "مؤكّد",
     "paymentStatusCancelled": "ملغى",
+    "installmentTooltip": "متبقي {{remaining}} من {{planned}} ({{schedule}})",
     "paymentsCount": "المدفوعات ({{count}})",
     "propertyFallback": "عقار",
     "chooseUnitPlaceholder": "اختر وحدة",
@@ -295,6 +339,10 @@
     "searchPlaceholder": "بحث في الوصف / المرجع",
     "category": "الفئة",
     "newTransaction": "معاملة جديدة",
+    "transactionTypes": {
+      "income": "إيراد",
+      "expense": "مصروف"
+    },
     "incomeCategories": {
       "rental": "إيرادات إيجار",
       "parking": "مواقف سيارات",
@@ -382,7 +430,15 @@
   },
   "reports": {
     "title": "التقارير",
-    "intro": "الخطوة 1: تصفح التقارير المرتبطة بالواجهة. اختر التقرير، عيّن الفلاتر، ثم نفّذ.",
+    "intro": "اختر أحد التقارير الأربعة أدناه، عيّن الفلاتر، ثم نفّذ. يتضمن التدفق النقدي تنزيل PDF اختياريًا.",
+    "reportType": "التقرير",
+    "chooseReport": "اختر تقريرًا",
+    "types": {
+      "income_statement": "قائمة الدخل",
+      "expenses": "تقرير المصروفات",
+      "cash_flow": "التدفق النقدي",
+      "vouchers": "تقرير السندات"
+    },
     "output": "المخرجات",
     "property": "العقار",
     "period": "الفترة",

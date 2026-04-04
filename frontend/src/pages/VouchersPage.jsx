@@ -18,6 +18,9 @@ import {
 import dayjs from 'dayjs'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useLocalizedDigits } from '../hooks/useLocalizedDigits'
+import { arabicInputNumberProps } from '../utils/arabicNumerals'
+import { sarDisplay } from '../utils/sarFormat'
 
 const STATUS_COLORS = {
   draft: 'default',
@@ -30,6 +33,7 @@ const STATUS_COLORS = {
 
 export function VouchersPage() {
   const { t } = useTranslation()
+  const { isArabic, localizeDigits } = useLocalizedDigits()
   const queryClient = useQueryClient()
   const { user } = useAuth()
   const [page, setPage] = useState(1)
@@ -60,6 +64,16 @@ export function VouchersPage() {
       { value: 'rejected', label: t('vouchers.statuses.rejected') },
     ],
     [t],
+  )
+
+  const paymentMethodLabelByValue = useMemo(
+    () => Object.fromEntries(paymentMethodOptions.map((o) => [o.value, o.label])),
+    [paymentMethodOptions],
+  )
+  const voucherStatusLabelByValue = useMemo(
+    () =>
+      Object.fromEntries(voucherStatusFilterOptions.map((o) => [o.value, o.label])),
+    [voucherStatusFilterOptions],
   )
 
   const role = user?.role
@@ -221,25 +235,46 @@ export function VouchersPage() {
           onChange: (p) => setPage(p),
         }}
         columns={[
-          { title: t('vouchers.number'), dataIndex: 'voucher_number', width: 130 },
+          {
+            title: t('vouchers.number'),
+            dataIndex: 'voucher_number',
+            width: 130,
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
           {
             title: t('common.property'),
             key: 'prop',
-            render: (_, row) => propertyNameById.get(row.property) ?? row.property,
+            render: (_, row) =>
+              localizeDigits(
+                String(propertyNameById.get(row.property) ?? row.property ?? ''),
+              ),
           },
-          { title: t('common.date'), dataIndex: 'date' },
+          {
+            title: t('common.date'),
+            dataIndex: 'date',
+            render: (v) => localizeDigits(String(v ?? '')),
+          },
           {
             title: t('common.amount'),
             dataIndex: 'amount',
-            render: (v) => String(v ?? '—'),
+            render: (v) => sarDisplay(v, t('common.currencySAR'), isArabic),
           },
           { title: t('vouchers.payee'), dataIndex: 'payee_name', ellipsis: true },
-          { title: t('contracts.method'), dataIndex: 'payment_method' },
+          {
+            title: t('contracts.method'),
+            dataIndex: 'payment_method',
+            render: (v) =>
+              paymentMethodLabelByValue[v] ??
+              (v != null ? String(v).replace(/_/g, ' ') : '—'),
+          },
           {
             title: t('common.status'),
             dataIndex: 'approval_status',
             render: (s) => (
-              <Tag color={STATUS_COLORS[s] || 'default'}>{s?.replace(/_/g, ' ')}</Tag>
+              <Tag color={STATUS_COLORS[s] || 'default'}>
+                {voucherStatusLabelByValue[s] ??
+                  (s != null ? String(s).replace(/_/g, ' ') : '—')}
+              </Tag>
             ),
           },
           {
@@ -335,7 +370,12 @@ export function VouchersPage() {
             label={t('vouchers.createModal.amount')}
             rules={[{ required: true, message: t('common.required') }]}
           >
-            <InputNumber min={0} step={100} style={{ width: '100%' }} />
+            <InputNumber
+              min={0}
+              step={100}
+              style={{ width: '100%' }}
+              {...arabicInputNumberProps(isArabic)}
+            />
           </Form.Item>
           <Form.Item
             name="payee_name"

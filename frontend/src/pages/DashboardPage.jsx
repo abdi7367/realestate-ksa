@@ -1,4 +1,4 @@
-import { Card, Col, Row, Typography, Space } from 'antd'
+import { Card, Col, Row, Typography } from 'antd'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -28,12 +28,6 @@ const MODULES = [
     color: '#2563eb',
   },
   {
-    key: 'reports',
-    to: '/reports',
-    icon: FileTextOutlined,
-    color: '#7c3aed',
-  },
-  {
     key: 'debts',
     to: '/debts',
     icon: AccountBookOutlined,
@@ -50,6 +44,12 @@ const MODULES = [
     to: '/vouchers',
     icon: FileDoneOutlined,
     color: '#b45309',
+  },
+  {
+    key: 'reports',
+    to: '/reports',
+    icon: FileTextOutlined,
+    color: '#7c3aed',
   },
 ]
 
@@ -113,12 +113,12 @@ export function DashboardPage() {
         {t('dashboard.title')}
       </Typography.Title>
 
-      <Row gutter={[20, 20]}>
+      <Row gutter={[20, 20]} className="dashboard-cards-row">
         {MODULES.map(({ key, to, icon: Icon, color }) => (
           <Col xs={24} sm={12} xl={8} key={key}>
             <Card hoverable className="dashboard-card" bordered={false}>
               <Link to={to} className="dashboard-card-link">
-                <Space align="start" size={16} wrap>
+                <div className="dashboard-card-inner">
                   <div
                     className="dashboard-card-icon"
                     style={{
@@ -139,7 +139,7 @@ export function DashboardPage() {
                       {t('dashboard.open')} <Arrow />
                     </Typography.Text>
                   </div>
-                </Space>
+                </div>
               </Link>
             </Card>
           </Col>
